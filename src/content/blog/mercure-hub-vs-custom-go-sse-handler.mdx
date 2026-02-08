@@ -88,7 +88,7 @@ graph LR
 **Alur Kerja:**
 
 1. Client melakukan koneksi ke Mercure Hub via SSE
-2. Subscribe ke topik spesifik (misal /chat/{roomId})
+2. Subscribe ke topik spesifik (misal `/chat/{roomId}`)
 3. Validasi JWT token otomatis di Mercure
 4. Laravel mempublikasi event via HTTP POST
 5. Mercure Hub mendistribusikan ke subscriber yang relevan

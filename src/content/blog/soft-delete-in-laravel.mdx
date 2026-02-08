@@ -237,7 +237,7 @@ Thanks to some helpful methods provided by Laravel, we can easily test our soft-
 Assert whether a model is soft-deleted
 A common assertion that you'll likely want to make when testing soft-deleted models is testing whether a model is soft-deleted. There are multiple ways that you can achieve this in Laravel.
 
-First, as we've already covered, you can use the trashed method on the model to check whether the model is soft-deleted. For example, let's imagine we have a route and controller (accessible by DELETE /authors/{author} using the route name authors.destroy) that allows a user to soft-delete a model. We could write the following test to assert that the author is soft-deleted:
+First, as we've already covered, you can use the trashed method on the model to check whether the model is soft-deleted. For example, let's imagine we have a route and controller (accessible by DELETE `/authors/{author}` using the route name authors.destroy) that allows a user to soft-delete a model. We could write the following test to assert that the author is soft-deleted:
 
 ```php        
 use App\Models\Author;

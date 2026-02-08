@@ -46,8 +46,8 @@ sudo systemctl restart nginx
 
 Edit file konfigurasi PHP:
 
-    Jika menggunakan PHP-FPM: /etc/php/{versi}/fpm/php.ini
-    Jika menggunakan CLI/Apache: /etc/php/{versi}/cli/php.ini
+    Jika menggunakan PHP-FPM: `/etc/php/{versi}/fpm/php.ini`
+    Jika menggunakan CLI/Apache: `/etc/php/{versi}/cli/php.ini`
 
 Cari dan ubah nilai berikut:
 
@@ -61,7 +61,7 @@ max_input_time = 600
     max_execution_time: Waktu maksimal script PHP berjalan.
     max_input_time: Waktu maksimal PHP membaca input dari request.
 
-Selain itu, jika menggunakan PHP-FPM, edit file /etc/php/{versi}/fpm/pool.d/www.conf dan ubah:
+Selain itu, jika menggunakan PHP-FPM, edit file `/etc/php/{versi}/fpm/pool.d/www.conf` dan ubah:
 
 ```
 request_terminate_timeout = 600s

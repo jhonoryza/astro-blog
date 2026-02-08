@@ -242,9 +242,9 @@ for element: i32 in a {
 
 | type   | contents                                                                                                                     | size                                 | lifetime                 | cleanup                     |
 | ------ | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | ------------------------ | --------------------------- |
-| stack  | - func arg <br>- local var <br>- known size at comp time                                                                     | dynamic <br>/ fixed <br> upper limit | lifetime of func         | auto when func return       |
-| heap   | - value live beyond func lifetime <br> value accessed by multiple thread <br>- larger values <br>- unknown size at comp time | dynamic                              | determined by programmer | manual                      |
-| static | - programs binary <br>- static variables <br>- string literals                                                               | fixed                                | lifetime of program      | auto when program terminate |
+| stack  | - func arg `<br>`- local var `<br>`- known size at comp time                                                                     | dynamic `<br>`/ fixed `<br>` upper limit | lifetime of func         | auto when func return       |
+| heap   | - value live beyond func lifetime `<br>` value accessed by multiple thread `<br>`- larger values `<br>`- unknown size at comp time | dynamic                              | determined by programmer | manual                      |
+| static | - programs binary `<br>`- static variables `<br>`- string literals                                                               | fixed                                | lifetime of program      | auto when program terminate |
 
 ### Ownership Based Resource Management (OBRM)
 

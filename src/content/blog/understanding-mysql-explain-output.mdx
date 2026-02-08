@@ -50,7 +50,7 @@ WHERE actor_id IN (
 |id|	select_type |	table       |	partitions|	type  |	possible_keys         |	key                |key_len|	ref|	rows|	filtered|	Extra|
 |--|--------------|-------------|-----------|-------|-----------------------|--------------------|-------|-----|------|---------|------|
 |1|	  SIMPLE      |	actor       |		        | ALL   |	PRIMARY               |		                 |	     |     | 200  |	100.00  |      |	
-|1|	  SIMPLE      |	<subquery2> |		        | eq_ref|	<auto_distinct_key>   |	<auto_distinct_key>|	2    |	sakila.actor.actor_id|	1|	100.00|	 |
+|1|	  SIMPLE      |	`<subquery2>` |		        | eq_ref|	`<auto_distinct_key>`   |	`<auto_distinct_key>`|	2    |	sakila.actor.actor_id|	1|	100.00|	 |
 |2|	  MATERIALIZED|	film        |		        | index |	PRIMARY               |	idx_title          | 514   |		 |1000|	11.11|	Using where; Using index|
 |2|	  MATERIALIZED|	film_actor  |		        | ref   |	PRIMARY,idx_fk_film_id|	idx_fk_film_id     |	2	   |sakila.film.film_id|	5|	100.00|	Using index|
 	
@@ -124,7 +124,7 @@ WHERE EXISTS(
 )
 ```
 
-* DERIVED: A subquery is used as a table and the results are stored in a temporary table. Other rows access this temporary table as table <derived{id}>.
+* DERIVED: A subquery is used as a table and the results are stored in a temporary table. Other rows access this temporary table as table `<derived{id}>`.
 
 ```sql
 SELECT * FROM (
@@ -144,7 +144,7 @@ LEFT JOIN LATERAL (
 ) AS lat ON true;
 ```
 
-* MATERIALIZED: The subquery used within a condition is materialized to a temporary table. Other rows access this temporary table as table <materialized{id}>.
+* MATERIALIZED: The subquery used within a condition is materialized to a temporary table. Other rows access this temporary table as table `<materialized{id}>`.
 
 ```sql
 SELECT *
@@ -176,9 +176,9 @@ SELECT * FROM tbl2 WHERE value = 42
 ### table
 The table column is self-explanatory: It contains the name of the table being accessed or the table alias used in your query. But there are also some special values:
 
-* <union{id-1},{id-2},...{id-n}>: A temporary table that is the result of merging and deduplicating the specified subqueries by the id column.
-* <derived{id}>: A temporary table that stores the result of the specified DERIVED subquery.
-* <subquery{id}>: A temporary table that stores the result of the specified SUBQUERY subquery.
+* `<union{id-1},{id-2},...{id-n}>`: A temporary table that is the result of merging and deduplicating the specified subqueries by the id column.
+* `<derived{id}>`: A temporary table that stores the result of the specified DERIVED subquery.
+* `<subquery{id}>`: A temporary table that stores the result of the specified SUBQUERY subquery.
 
 ### partitions
 This column is only filled when a table is partitioned into smaller chunks. It lists all the partitions that will be accessed to find the rows matching the query's criteria.
@@ -193,7 +193,7 @@ The type column is essential as it describes how a table was accessed. You'll fi
 * index An index can be used to get the requested rows. However, the entire index is scanned instead of a small portion as usual. This is obviously slower than a more focused index access. You can optimize this.
 * index_merge Multiple indexes can be used since MySQL 8.0, and that's what you see. The key column should list multiple indexes that have been merged together. The performance is obviously better than not using an index at all, but you should create a better-fitting single index.
 * index_subquery This is a specially optimized version of the ref access type when the index column is checked again an abc IN(SELECT ...) subquery.
-* range A range of the index is scanned from a starting point to an ending point. This is expected if your condition contains any range condition (<>, >, >=, <, <=, IS NULL, <=>, BETWEEN, LIKE or IN()) but unexpected and probably a good thing to look into when used with equality checks.
+* range A range of the index is scanned from a starting point to an ending point. This is expected if your condition contains any range condition `(<>, >, >=, <, <=, IS NULL, <=>, BETWEEN, LIKE or IN())` but unexpected and probably a good thing to look into when used with equality checks.
 * ref All rows identified by the index are loaded. This is the access type you see most used and there is no reason to change anything.
 * ref_or_null This access type behaves the same way as the ref type, but MySQL is performing another search for NULL values. ref_or_null is used instead of ref for nullable columns or sometimes for subqueries.
 * unique_subquery This is a specially optimized version of the eq_ref access type when the index column is checked again an abc IN(SELECT ...) subquery.
@@ -212,7 +212,7 @@ CREATE INDEX year ON invoices ((YEAR(created_at)))
 ```
 
 ### key
-The key column tells you which index is used from the possible ones to load the rows - or NULL if none is used. A common thing also listed is automatically generated keys (e.g. <auto_distinct_key>) when MySQL stores a subquery's result in a temporary table and wants to access if fast in further execution steps. And rarely you see multiple keys listed when MySQL decides that one would not be efficient enough (see index_merge access type).
+The key column tells you which index is used from the possible ones to load the rows - or NULL if none is used. A common thing also listed is automatically generated keys (e.g. `<auto_distinct_key>`) when MySQL stores a subquery's result in a temporary table and wants to access if fast in further execution steps. And rarely you see multiple keys listed when MySQL decides that one would not be efficient enough (see index_merge access type).
 
 ### key_len
 If you really want to dig deep down into your EXPLAIN output, you can analyze the key_len column: It lists the bytes used from the indexes column definition. For multi-column indexes, you could infer whether all columns in the index had been used to find the rows or the subset of columns used.

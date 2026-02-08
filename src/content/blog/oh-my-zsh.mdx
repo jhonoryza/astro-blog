@@ -1,0 +1,55 @@
+---
+title: 'oh my zsh'
+description: 'guide to install oh my zsh '
+date: '01-19-2025 10:22:00'
+tags: ["oh my zsh"]
+draft: false
+---
+
+## Guide
+
+- Install some depedency
+
+```bash
+#install some depedency
+brew install zsh-autosuggestions zsh-syntax-highlighting
+
+#install ohmyzsh
+sh -c "$(wget https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh -O -)"
+	
+#install some ohmyzsh plugins
+git clone https://github.com/zsh-users/zsh-autosuggestions.git $ZSH_CUSTOM/plugins/zsh-autosuggestions
+git clone https://github.com/zsh-users/zsh-syntax-highlighting.git $ZSH_CUSTOM/plugins/zsh-syntax-highlighting
+git clone https://github.com/zdharma-continuum/fast-syntax-highlighting.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/fast-syntax-highlighting
+git clone --depth 1 -- https://github.com/marlonrichert/zsh-autocomplete.git $ZSH_CUSTOM/plugins/zsh-autocomplete
+```
+
+- Open ~/.zshrc
+
+```bash
+nvim ~/.zshrc
+```
+
+- Find the line which says `plugins=(git)`
+
+- Replace that line with 
+
+```
+plugins=(git zsh-autosuggestions zsh-syntax-highlighting fast-syntax-highlighting zsh-autocomplete)
+```
+
+- Change the theme run this command
+
+```bash
+git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
+```
+
+- Open `~/.zshrc`, find the line that sets ZSH_THEME, and change its value to `powerlevel10k/powerlevel10k`
+
+- add this line to your `~/.zshrc` to add your old config
+
+```
+if [ -f ~/.zshrc.pre-oh-my-zsh ]; then
+    source ~/.zshrc.pre-oh-my-zsh
+fi
+```

@@ -1,0 +1,809 @@
+---
+title: 'Golang'
+description: 'my notes about golang basic until advance'
+date: '04-19-2025 09:36:00'
+tags: ["golang"]
+draft: false
+---
+
+# Golang Basic
+
+## Installation
+
+Follow the official installation guide: [https://go.dev/doc/install](https://go.dev/doc/install)
+
+## Get Started
+
+To create a new project, initialize a module:
+
+```bash
+go mod init hello_world
+```
+
+To run a Go program:
+
+```bash
+go run main.go
+```
+
+## Comment
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    // This is a single-line comment
+
+    /*
+       This is a multi-line comment
+    */
+
+    fmt.Println("Hello, World!")
+}
+```
+
+## Variables
+
+### Declaration
+
+```go
+var a int = 5
+```
+
+### Short Declaration
+
+```go
+a := 5
+```
+
+### Mutability
+
+Variables in Go are mutable by default:
+
+```go
+a := 5
+a = 10 // Allowed
+```
+
+### Shadowing
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    a := 5
+    {
+        a := 10 // Shadows the outer 'a'
+        fmt.Println(a) // 10
+    }
+    fmt.Println(a) // 5
+}
+```
+
+## Data Types
+
+```go
+// Boolean
+var b1 bool = true
+
+// Integer
+var i1 int = 42
+var i2 int8 = 127
+var i3 uint = 42
+
+// Floating-point
+var f1 float32 = 3.14
+var f2 float64 = 2.718
+
+// String
+var s1 string = "Hello, Go"
+
+// Array
+var arr [5]int = [5]int{1, 2, 3, 4, 5}
+
+// Slice
+var slice []int = []int{1, 2, 3, 4, 5}
+
+// Map
+var m map[string]int = map[string]int{"one": 1, "two": 2}
+
+// Struct
+type Person struct {
+    Name string
+    Age  int
+}
+```
+
+## Constants
+
+```go
+const Pi = 3.14
+const Greeting = "Hello, Go"
+```
+
+## Functions
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    result := add(5, 3)
+    fmt.Println("Result:", result)
+}
+
+func add(a int, b int) int {
+    return a + b
+}
+```
+
+## Control Flow
+
+### If-Else
+
+```go
+if a > 5 {
+    fmt.Println("Greater than 5")
+} else if a > 3 {
+    fmt.Println("Greater than 3")
+} else {
+    fmt.Println("Less than or equal to 3")
+}
+```
+
+### Switch
+
+```go
+switch day := "Monday"; day {
+case "Monday":
+    fmt.Println("Start of the week")
+case "Friday":
+    fmt.Println("End of the week")
+default:
+    fmt.Println("Midweek")
+}
+```
+
+### Loops
+
+#### For Loop
+
+```go
+for i := 0; i < 5; i++ {
+    fmt.Println(i)
+}
+```
+
+#### While-Like Loop
+
+```go
+i := 0
+for i < 5 {
+    fmt.Println(i)
+    i++
+}
+```
+
+#### Infinite Loop
+
+```go
+for {
+    fmt.Println("Infinite loop")
+    break
+}
+```
+
+## Structs
+
+```go
+package main
+
+import "fmt"
+
+type Product struct {
+    Name  string
+    Price float64
+}
+
+func (p Product) CalculateTax() float64 {
+    return p.Price * 0.1
+}
+
+func main() {
+    book := Product{Name: "Go Programming", Price: 50.0}
+    fmt.Println("Tax:", book.CalculateTax())
+}
+```
+
+## Pointers
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    a := 42
+    p := &a // Pointer to 'a'
+    fmt.Println(*p) // Dereference pointer
+    *p = 21         // Modify value through pointer
+    fmt.Println(a)  // 21
+}
+```
+
+## Arrays and Slices
+
+### Arrays
+
+```go
+arr := [5]int{1, 2, 3, 4, 5}
+fmt.Println(arr[0]) // Access element
+```
+
+### Slices
+
+```go
+slice := []int{1, 2, 3, 4, 5}
+slice = append(slice, 6) // Add element
+fmt.Println(slice)
+```
+
+## Maps
+
+```go
+m := map[string]int{"one": 1, "two": 2}
+fmt.Println(m["one"]) // Access value
+m["three"] = 3        // Add key-value pair
+delete(m, "two")      // Delete key
+```
+
+## Goroutines
+
+```go
+package main
+
+import (
+    "fmt"
+    "time"
+)
+
+func sayHello() {
+    fmt.Println("Hello")
+}
+
+func main() {
+    go sayHello() // Run in a separate goroutine
+    time.Sleep(1 * time.Second) // Wait for goroutine to finish
+}
+```
+
+## Channels
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    ch := make(chan int)
+
+    go func() {
+        ch <- 42 // Send value to channel
+    }()
+
+    value := <-ch // Receive value from channel
+    fmt.Println(value)
+}
+```
+
+## Error Handling
+
+```go
+package main
+
+import (
+    "errors"
+    "fmt"
+)
+
+func divide(a, b int) (int, error) {
+    if b == 0 {
+        return 0, errors.New("division by zero")
+    }
+    return a / b, nil
+}
+
+func main() {
+    result, err := divide(10, 0)
+    if err != nil {
+        fmt.Println("Error:", err)
+    } else {
+        fmt.Println("Result:", result)
+    }
+}
+```
+
+## Interfaces
+
+```go
+package main
+
+import "fmt"
+
+type Shape interface {
+    Area() float64
+}
+
+type Circle struct {
+    Radius float64
+}
+
+func (c Circle) Area() float64 {
+    return 3.14 * c.Radius * c.Radius
+}
+
+func main() {
+    var s Shape = Circle{Radius: 5}
+    fmt.Println("Area:", s.Area())
+}
+```
+
+# Golang Intermediate
+
+## Packages and Modules
+
+### Creating a Package
+
+A package is a way to organize code into reusable modules.
+
+1. Create a folder for your package:
+   ```bash
+   mkdir mathutils
+   ```
+
+2. Add a Go file inside the folder:
+   ```go
+   // filepath: mathutils/mathutils.go
+   package mathutils
+
+   func Add(a, b int) int {
+       return a + b
+   }
+
+   func Multiply(a, b int) int {
+       return a * b
+   }
+   ```
+
+3. Use the package in your main program:
+   ```go
+   package main
+
+   import (
+       "fmt"
+       "path/to/your/project/mathutils"
+   )
+
+   func main() {
+       sum := mathutils.Add(3, 5)
+       product := mathutils.Multiply(3, 5)
+       fmt.Println("Sum:", sum)
+       fmt.Println("Product:", product)
+   }
+   ```
+
+### Using Third-Party Modules
+
+1. Initialize a module:
+   ```bash
+   go mod init myproject
+   ```
+
+2. Install a third-party module:
+   ```bash
+   go get github.com/gorilla/mux
+   ```
+
+3. Use the module:
+   ```go
+   package main
+
+   import (
+       "fmt"
+       "net/http"
+       "github.com/gorilla/mux"
+   )
+
+   func main() {
+       r := mux.NewRouter()
+       r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+           fmt.Fprintln(w, "Hello, World!")
+       })
+       http.ListenAndServe(":8080", r)
+   }
+   ```
+
+## Error Handling with Custom Errors
+
+```go
+package main
+
+import (
+    "errors"
+    "fmt"
+)
+
+type CustomError struct {
+    Code    int
+    Message string
+}
+
+func (e *CustomError) Error() string {
+    return fmt.Sprintf("Code: %d, Message: %s", e.Code, e.Message)
+}
+
+func riskyOperation(success bool) error {
+    if !success {
+        return &CustomError{Code: 500, Message: "Operation failed"}
+    }
+    return nil
+}
+
+func main() {
+    err := riskyOperation(false)
+    if err != nil {
+        fmt.Println("Error:", err)
+    }
+}
+```
+
+## Concurrency with WaitGroups
+
+```go
+package main
+
+import (
+    "fmt"
+    "sync"
+)
+
+func worker(id int, wg *sync.WaitGroup) {
+    defer wg.Done()
+    fmt.Printf("Worker %d starting\n", id)
+    // Simulate work
+    fmt.Printf("Worker %d done\n", id)
+}
+
+func main() {
+    var wg sync.WaitGroup
+
+    for i := 1; i <= 5; i++ {
+        wg.Add(1)
+        go worker(i, &wg)
+    }
+
+    wg.Wait()
+    fmt.Println("All workers completed")
+}
+```
+
+## Context for Cancellation and Timeouts
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "time"
+)
+
+func doWork(ctx context.Context) {
+    for {
+        select {
+        case <-ctx.Done():
+            fmt.Println("Work cancelled")
+            return
+        default:
+            fmt.Println("Working...")
+            time.Sleep(500 * time.Millisecond)
+        }
+    }
+}
+
+func main() {
+    ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+    defer cancel()
+
+    go doWork(ctx)
+
+    time.Sleep(3 * time.Second)
+    fmt.Println("Main function done")
+}
+```
+
+## Reflection
+
+```go
+package main
+
+import (
+    "fmt"
+    "reflect"
+)
+
+type Person struct {
+    Name string
+    Age  int
+}
+
+func main() {
+    p := Person{Name: "Alice", Age: 30}
+    t := reflect.TypeOf(p)
+    v := reflect.ValueOf(p)
+
+    for i := 0; i < t.NumField(); i++ {
+        field := t.Field(i)
+        value := v.Field(i)
+        fmt.Printf("Field: %s, Type: %s, Value: %v\n", field.Name, field.Type, value)
+    }
+}
+```
+
+## File Handling
+
+### Reading a File
+
+```go
+package main
+
+import (
+    "fmt"
+    "io/ioutil"
+)
+
+func main() {
+    data, err := ioutil.ReadFile("example.txt")
+    if err != nil {
+        fmt.Println("Error reading file:", err)
+        return
+    }
+    fmt.Println(string(data))
+}
+```
+
+### Writing to a File
+
+```go
+package main
+
+import (
+    "fmt"
+    "os"
+)
+
+func main() {
+    file, err := os.Create("example.txt")
+    if err != nil {
+        fmt.Println("Error creating file:", err)
+        return
+    }
+    defer file.Close()
+
+    _, err = file.WriteString("Hello, Go!")
+    if err != nil {
+        fmt.Println("Error writing to file:", err)
+    }
+}
+```
+
+# Golang Advanced
+
+## Generics
+
+```go
+package main
+
+import "fmt"
+
+func Sum[T int | float64](a, b T) T {
+    return a + b
+}
+
+func main() {
+    fmt.Println(Sum(3, 5))       // Integers
+    fmt.Println(Sum(3.5, 5.5))   // Floats
+}
+```
+
+## Goroutines and Select
+
+```go
+package main
+
+import (
+    "fmt"
+    "time"
+)
+
+func main() {
+    ch1 := make(chan string)
+    ch2 := make(chan string)
+
+    go func() {
+        time.Sleep(1 * time.Second)
+        ch1 <- "Message from channel 1"
+    }()
+
+    go func() {
+        time.Sleep(2 * time.Second)
+        ch2 <- "Message from channel 2"
+    }()
+
+    for i := 0; i < 2; i++ {
+        select {
+        case msg1 := <-ch1:
+            fmt.Println(msg1)
+        case msg2 := <-ch2:
+            fmt.Println(msg2)
+        }
+    }
+}
+```
+
+## Mutex and Race Conditions
+
+```go
+package main
+
+import (
+    "fmt"
+    "sync"
+)
+
+var counter int
+var mu sync.Mutex
+
+func increment(wg *sync.WaitGroup) {
+    defer wg.Done()
+    mu.Lock()
+    counter++
+    mu.Unlock()
+}
+
+func main() {
+    var wg sync.WaitGroup
+
+    for i := 0; i < 1000; i++ {
+        wg.Add(1)
+        go increment(&wg)
+    }
+
+    wg.Wait()
+    fmt.Println("Final Counter:", counter)
+}
+```
+
+## Building REST APIs
+
+```go
+package main
+
+import (
+    "encoding/json"
+    "net/http"
+)
+
+type User struct {
+    ID   int    `json:"id"`
+    Name string `json:"name"`
+}
+
+var users = []User{
+    {ID: 1, Name: "Alice"},
+    {ID: 2, Name: "Bob"},
+}
+
+func getUsers(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(users)
+}
+
+func main() {
+    http.HandleFunc("/users", getUsers)
+    http.ListenAndServe(":8080", nil)
+}
+```
+
+## Testing
+
+### Writing Unit Tests
+
+```go
+package main
+
+import "testing"
+
+func Add(a, b int) int {
+    return a + b
+}
+
+func TestAdd(t *testing.T) {
+    result := Add(2, 3)
+    if result != 5 {
+        t.Errorf("Expected 5, got %d", result)
+    }
+}
+```
+
+### Benchmarking
+
+```go
+package main
+
+import "testing"
+
+func BenchmarkAdd(b *testing.B) {
+    for i := 0; i < b.N; i++ {
+        Add(2, 3)
+    }
+}
+```
+
+## Advanced Interfaces
+
+```go
+package main
+
+import "fmt"
+
+type Stringer interface {
+    String() string
+}
+
+type Person struct {
+    Name string
+    Age  int
+}
+
+func (p Person) String() string {
+    return fmt.Sprintf("%s (%d years old)", p.Name, p.Age)
+}
+
+func main() {
+    p := Person{Name: "Alice", Age: 30}
+    fmt.Println(p)
+}
+```
+
+## Dependency Injection
+
+```go
+package main
+
+import "fmt"
+
+type Service interface {
+    PerformTask()
+}
+
+type RealService struct{}
+
+func (s RealService) PerformTask() {
+    fmt.Println("Performing real task")
+}
+
+type App struct {
+    Service Service
+}
+
+func main() {
+    app := App{Service: RealService{}}
+    app.Service.PerformTask()
+}
+```

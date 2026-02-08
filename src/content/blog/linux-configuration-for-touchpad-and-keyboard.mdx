@@ -1,0 +1,36 @@
+---
+title: 'linux configuration for touchpad and keyboard'
+description: 'my personal config'
+date: '01-26-2025 18:00:00'
+tags: ["linux", "touchpad", "keyboard"]
+draft: false
+---
+
+create file in `/etc/x11/xorg.conf.d/30-touchpad.conf`
+
+```
+Section "InputClass"
+	Identifier "touchpad"
+	MatchIsTouchpad "on"
+	Driver "libinput"
+	Option "Tapping" "on"
+	Option "Drag" "true"
+	Option "TapAndDragGesture" "true"
+EndSection
+```
+
+this configuration will enable tapping and drag with tap gesture, just double tap then drag
+
+create file in `/etc/x11/xorg.conf.d/00-keyboard.conf`
+
+```
+Section "InputClass"
+        Identifier "system-keyboard"
+        MatchIsKeyboard "on"
+        Option "XkbLayout" "us"
+        Option "XkbModel" "pc105"
+	Option "XkbOptions" "ctrl:swap_lwin_lctl"
+EndSection
+```
+
+this configuration will swap `super/win/cmd` button with `ctrl`

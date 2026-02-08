@@ -1,0 +1,30 @@
+---
+title: 'rdbms data type'
+description: 'summary rdbms data type'
+date: '07-07-2025 20:41:00'
+tags: ["rdbms", "data type"]
+draft: false
+---
+
+| **Kategori**       | **Laravel Migration**   | **PostgreSQL**           | **MySQL**             | **SQLite**           | **Doctrine Type** (`getType()->getName()`) | **`type_name` dari `Schema::getColumns()`**     |
+|--------------------|--------------------------|---------------------------|------------------------|----------------------|---------------------------------------------|-------------------------------------------------|
+| **Big Integer**     | `bigInteger()`           | `BIGINT`                  | `BIGINT`               | `INTEGER`            | `bigint`                                    | `int8`                                          |
+| **Integer**         | `integer()`              | `INTEGER`                 | `INT`                  | `INTEGER`            | `integer`                                   | `int4`                                          |
+| **Small Integer**   | `smallInteger()`         | `SMALLINT`                | `SMALLINT`             | `INTEGER`            | `smallint`                                  | `int2`                                          |
+| **Tiny Integer**    | `tinyInteger()`          | *(gunakan `SMALLINT`)*    | `TINYINT`              | `INTEGER`            | `boolean` / `smallint`                      | `int2` *(atau `bool` jika boolean)*            |
+| **Boolean**         | `boolean()`              | `BOOLEAN`                 | `TINYINT(1)`           | `INTEGER`            | `boolean`                                   | `bool`                                          |
+| **String**          | `string(255)`            | `VARCHAR(255)`            | `VARCHAR(255)`         | `TEXT`               | `string`                                    | `varchar`                                       |
+| **Text**            | `text()` / `longText()`  | `TEXT`                    | `TEXT` / `LONGTEXT`    | `TEXT`               | `text`                                      | `text`                                          |
+| **Date**            | `date()`                 | `DATE`                    | `DATE`                 | `TEXT`               | `date`                                      | `date`                                          |
+| **Datetime**        | `datetime()`             | `TIMESTAMP`               | `DATETIME`             | `TEXT`               | `datetime`                                  | `timestamp`                                     |
+| **Timestamp**       | `timestamp()`            | `TIMESTAMP`               | `TIMESTAMP`            | `INTEGER`            | `datetime`                                  | `timestamp`                                     |
+| **TimestampTz ✅**   | `timestampTz()`          | `TIMESTAMPTZ`             | ❌                     | ❌                   | `datetimetz`                                | `timestamptz`                                   |
+| **Time**            | `time()`                 | `TIME`                    | `TIME`                 | `TEXT`               | `time`                                      | `time`                                          |
+| **Float**           | `float()`                | `REAL` / `FLOAT4`         | `FLOAT`                | `REAL`               | `float`                                     | `float4`                                        |
+| **Double**          | `double()`               | `DOUBLE PRECISION`        | `DOUBLE`               | `REAL`               | `float`                                     | `float8`                                        |
+| **Decimal**         | `decimal(10,2)`          | `DECIMAL(10,2)`           | `DECIMAL(10,2)`        | `NUMERIC(10,2)`      | `decimal`                                   | `numeric`                                       |
+| **Numeric**         | `decimal(10,2)`          | `NUMERIC(10,2)`           | `NUMERIC(10,2)`        | `NUMERIC(10,2)`      | `decimal`                                   | `numeric`                                       |
+| **JSON**            | `json()`                 | `JSONB`                   | `JSON (>=5.7)`         | `TEXT`               | `json`                                      | `jsonb`                                         |
+| **UUID**            | `uuid()`                 | `UUID`                    | `CHAR(36)`             | `TEXT`               | `guid`                                      | `uuid` *(kalau ada)*                           |
+| **Binary**          | `binary()`               | `BYTEA`                   | `BLOB`                 | `BLOB`               | `binary`                                    | `bytea`                                         |
+| **Enum**            | `enum()`                 | `ENUM` / `TEXT`           | `ENUM`                 | `TEXT`               | `string`                                    | `varchar` / `enum`                              |

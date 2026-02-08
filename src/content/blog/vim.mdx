@@ -1,0 +1,47 @@
+---
+title: 'Vim'
+description: 'my personal vim config'
+date: '02-20-2025 09:30:00'
+tags: ["vim"]
+draft: false
+---
+
+## install vim
+
+```bash
+sudo apt install vim
+```
+
+create file `.vimrc`
+
+```
+syntax on           " Enable syntax highlighting
+set number          " Show line number
+set relativenumber  " Show relative number
+set tabstop=4       " Set tab width to 4 spaces
+set shiftwidth=4    " Set indentation width to 4 spaces
+set expandtab       " Use spaces instead of tabs
+set cursorline      " Highlight the current line
+```
+
+## install codeium ai
+
+```bash
+git clone https://github.com/Exafunction/codeium.vim ~/.vim/pack/Exafunction/start/codeium.vim
+```
+
+add to `.vimrc`
+```
+imap <script><silent><nowait><expr> <C-g> codeium#Accept()
+imap <script><silent><nowait><expr> <C-h> codeium#AcceptNextWord()
+imap <script><silent><nowait><expr> <C-j> codeium#AcceptNextLine()
+imap <C-;>   <Cmd>call codeium#CycleCompletions(1)<CR>
+imap <C-,>   <Cmd>call codeium#CycleCompletions(-1)<CR>
+imap <C-x>   <Cmd>call codeium#Clear()<CR>
+```
+
+- open vim
+- type `:Codeium Auth` 
+- open the url
+- copy the token
+- codeium is ready to use

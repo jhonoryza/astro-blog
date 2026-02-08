@@ -1,0 +1,65 @@
+---
+title: 'Konfigurasi Gitlab CI/CD untuk Laravel'
+description: 'Kali ini kita akan membuat konfigurasi ci/cd pada gitlab.com untuk aplikasi laravel'
+date: '08-05-2023 18:00:00'
+tags: ["gitlab", "ci/cd", "laravel"]
+draft: false
+---
+
+Kali ini kita akan membuat konfigurasi ci/cd pada gitlab.com untuk aplikasi laravel
+
+## Petunjuk jika menggunakan tools laravel envoy
+* sudah melakukan setup server seperti yg dijelaskan article ini
+* sudah melakukan konfigurasi laravel envoy seperti yg dijelaskan article ini
+* tambahkan SSH_PRIVATE_KEY pada repository yang digunakan di menu settings -> ci/cd -> variables
+* dilocal bisa lihat file ini cat ~/.ssh/id_rsa
+* buat file baru .gitlab-ci.yml di laravel app root directory dan tambahkan konfigurasi dibawah:
+
+```yaml
+stages:
+  - Deploy
+
+production-deployment:
+  image: lorisleiva/laravel-docker:8.0
+  stage: Deploy
+  script:
+    - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )'
+    - eval $(ssh-agent -s)
+    - ssh-add <(echo "$SSH_PRIVATE_KEY")
+    - mkdir -p ~/.ssh
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+    - composer update
+    - vendor/bin/envoy run deploy
+  only:
+  - master
+```
+
+Setiap kali ada push code push ke branch master maka proses ci/cd akan berjalan
+
+## Petunjuk jika menggunakan tools Deployer
+* sudah melakukan setup server seperti yg dijelaskan article ini
+* sudah melakukan konfigurasi laravel menggunakan deployer seperti yg dijelaskan article ini
+* tambahkan SSH_PRIVATE_KEY pada repository yang digunakan di menu settings -> ci/cd -> variables
+* dilocal bisa lihat file ini cat ~/.ssh/id_rsa
+* buat file baru .gitlab-ci.yml di laravel app root directory dan tambahkan konfigurasi dibawah:
+
+```yaml
+stages:
+  - Deploy
+
+production-deployment:
+  image: lorisleiva/laravel-docker:8.0
+  stage: Deploy
+  script:
+    - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )'
+    - eval $(ssh-agent -s)
+    - ssh-add <(echo "$SSH_PRIVATE_KEY")
+    - mkdir -p ~/.ssh
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+    - composer update
+    - vendor/bin/dep deploy production -vv
+  only:
+  - master
+```
+
+Setiap kali ada push code push ke branch master maka proses ci/cd akan berjalan

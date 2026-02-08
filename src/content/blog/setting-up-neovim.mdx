@@ -1,0 +1,378 @@
+---
+title: 'Setting Up Neovim'
+description: 'This guide will install neovim and use lazyvim or nvchad'
+date: '12-31-2024 16:00:00'
+tags: ["neovim", "vim"]
+draft: false
+---
+
+## Install NeoVim
+
+```bash
+wget https://github.com/neovim/neovim/releases/latest/download/nvim-linux64.tar.gz
+mkdir nvim
+mv nvim-linux64.tar.gz nvim
+cd nvim
+tar -xvf nvim-linux64.tar.gz
+sudo ln -s ~/nvim/nvim-linux64/bin/nvim /usr/local/bin/nvim
+```
+
+Make a backup of your current Neovim configuration files:
+
+```bash
+# Linux / MacOS (Unix)
+mv ~/.config/nvim{,.bak}
+mv ~/.local/share/nvim{,.bak}
+mv ~/.local/state/nvim{,.bak}
+mv ~/.cache/nvim{,.bak}
+```
+
+after this you can choose between this 3 option how to configure your neovim:
+
+1. [Using My Personal Nvim Custom Configuration](##using-my-personal-nvim-custom-configuration)
+2. [Using LazyVim Configuration](##using-lazyvim)
+3. [Using NvChad Configuration](##using-nvchad)
+
+## Using My Personal Nvim Custom Configuration
+
+create a directory in `~/.config/nvim`
+
+clone this repo
+
+```bash
+git clone git@github.com:jhonoryza/nvim.git
+```
+
+install ripgrep
+
+```bash
+brew install ripgrep
+```
+
+clone packer
+
+```bash
+git clone --depth 1 https://github.com/wbthomason/packer.nvim\
+ ~/.local/share/nvim/site/pack/packer/start/packer.nvim
+```
+
+install fnm
+
+```bash
+curl -fsSL https://fnm.vercel.app/install | bash
+```
+
+after installation success follow the instruction
+
+run 
+
+```bash
+
+fnm install v18
+```
+
+install go
+
+download it from [here](https://go.dev/doc/install) and follow the instruction untill you succeed install go
+
+install clangd and cmake
+
+```bash
+sudo apt install clangd cmake
+```
+
+install rust
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+install latest python
+
+```
+sudo dnf groupinstall "Development Tools"
+sudo dnf install python3-devel openssl-devel zlib-devel bzip2-devel sqlite-devel libffi-devel
+
+# download and extract source archive
+wget https://www.python.org/ftp/python/3.8.11/Python-3.8.11.tgz
+tar xzf Python-3.8.11.tgz Python-3.8.11/
+cd Python-3.8.11/
+# configure with all optimizations
+./configure --enable-optimizations --with-ensurepip=install
+# do not touch system default python
+sudo make altinstall
+# cleanup
+cd .. && sudo rm -rf Python-3.8.11/
+```
+
+install zig
+
+download it from [here](https://ziglang.org/download/)
+
+and follow the installation instruction [here](https://ziglang.org/learn/getting-started/#managers) untill succeed
+
+go to `cd ~/.config/nvim/ && nvim .`
+
+then run `:PackerCompile` and `:PackerSync` exit then reopen `nvim .`
+
+## some keybinding
+
+- `leader` is using space
+- `;p` to find all files
+- `;f` find project files
+- `leader+gs` to interact with git
+- `;s` to find word
+- `;r` to find recent files
+- `;t` to find list all func and variable
+- `;b` to open file browser
+- `;o` to list open buffer
+- `;;` to resume previous picker
+- `leader+e` open sidebar
+- `leader+q` close sidebar
+- `leader+x` close buffer
+- `ctrl+c` escape when in insert mode
+- `ss` split vertical
+- `sv` close horizontal
+- `sl` move to right split
+- `sh` move to left split
+- `sj` move to down split
+- `sk` move to up split
+- `Tab` cycle to next buffer
+- `Shift+Tab` cycle to prev buffer
+- `ysiw'` surround single quote
+- `ysiw"` surround double quote
+- `cs"'` change double quote to single quote
+- `cs'"` change single quote to double quote
+- `leader+l` switch to right nvimtree
+- `leader+h` switch to left nvimtree
+
+## lsp keybinding
+
+- `ctrl+space` code completion
+- `ctrl+y` confirm
+- `ctrl+n` next item
+- `ctrl+p` prev item
+- `leader+lh` signature_help
+- `leader+ld` go to definition
+- `leader+lk` hover
+- `leader+lf` format
+- `leader+lr` rename
+- `leader+le` references
+- `leader+lc` code action 
+- `leader+ls` workspace symbol
+- `leader+lg` open in float
+
+### available lsp
+
+- [link is here](https://github.com/williamboman/mason-lspconfig.nvim?tab=readme-ov-file#available-lsp-servers)
+- edit this file `~/.config/nvim/after/plugin/lsp.lua`
+- to apply run `:so`
+
+### other keybindings
+
+- see this file `~/.config/nvim/lua/fajar/remap.lua`
+
+### vim configuration
+
+- see this file `~/.config/nvim/lua/fajar/set.lua`
+
+### adding new plugin
+
+- edit this file `~/.config/nvim/lua/fajar/packer.lua`
+- to install run `:so` and `:PackerSync`
+
+### adjust default theme
+
+- to add new theme edit this file `~/.config/nvim/after/plugin/colors.lua`
+- to apply run `:w` and `:so`
+- available colors
+  - kanagawa (default)
+  - gruvbox
+- live change color run `:lua theme('gruvbox')`
+
+### treesitter
+
+- see this file `~/.config/nvim/after/plugin/treesitter.lua`
+
+### tab feature
+
+- see this file `~/.config/nvim/after/plugin/bufferline.lua`
+
+### sidebar folder navigation
+
+- see this file `~/.config/nvim/after/plugin/nvimtree.lua`
+
+## Using LazyVim Configuration
+
+Clone the LazyVim starter repository and open Neovim:
+
+```bash
+git clone https://github.com/LazyVim/starter ~/.config/nvim && nvim
+```
+
+Remove the `.git` folder so you can add it to your own repository later:
+
+```bash
+rm -rf ~/.config/nvim/.git
+```
+
+Full documentation is available [here](https://www.lazyvim.org/).
+
+## Using NvChad Configuration
+
+Clone the NvChad starter repository and open Neovim:
+
+```bash
+git clone https://github.com/NvChad/starter ~/.config/nvim && nvim
+```
+
+The default mappings are defined
+[here](https://github.com/NvChad/NvChad/blob/v2.5/lua/nvchad/mappings.lua).
+
+Check
+[configs.md](https://github.com/neovim/nvim-lspconfig/blob/master/doc/configs.md)
+to ensure your language's LSP server is present there and edit the
+`configs/lspconfig.lua` file to add your language's LSP.
+
+Full documentation is available
+[here](https://nvchad.com/docs/quickstart/install).
+
+### My NvChad custom config
+
+edit this file `~/.config/nvim/lua/plugins/init.lua` add this plugins
+
+```lua
+  {
+    "rachartier/tiny-inline-diagnostic.nvim",
+    event = "VeryLazy",
+    config = function()
+      require "configs.inline-diagnostics"
+    end,
+  },
+  { "nvchad/volt",     lazy = true },
+  {
+    "nvchad/minty",
+    lazy = true,
+    config = function()
+      require "configs.minty"
+    end,
+  },
+  { "nvchad/menu",     lazy = true },
+
+  { "nvchad/showkeys", cmd = "ShowkeysToggle", opts = { position = "top-center" } },
+
+  { "nvchad/timerly",  cmd = "TimerlyToggle" },
+
+  {
+    "jose-elias-alvarez/null-ls.nvim",
+    config = function()
+      require("null-ls").setup({
+        sources = {
+          -- Menggunakan golangci-lint-server untuk linting
+          null_ls.builtins.diagnostics.golangci_lint.with({
+             command = "golangci-lint-server",  -- Pastikan path ke golangci-lint-server sesuai
+          }),
+        },
+      })
+    end,
+  },
+```
+
+edit this file `~/.config/nvim/lua/configs/lspconfig.lua`
+
+```lua
+local servers = { "html", "cssls", "gopls", "volar", "svelte", "emmet_language_server", "css_variables", "denols", "tailwindcss", "rust_analyzer", "intelephense", "ansiblels", "bashls", "cmake", "docker_compose_language_service", "dockerls", "ts_ls", "lua_ls", "clangd" }
+
+lspconfig.ts_ls.setup{
+  on_attach = nvlsp.on_attach,
+  on_init = nvlsp.on_init,
+  capabilities = nvlsp.capabilities,
+  filetypes = { "typescript", "typescriptreact", "typescript.tsx" },
+}
+  lspconfig.volar.setup {
+    init_options = {
+      typescript = {
+        tsdk = '/home/ubuntu/.local/share/nvim/mason/packages/typescript-language-server/node_modules/typescript/lib'
+      }
+    }
+  }
+```
+
+add this file `~/.config/nvim/lua/configs/inline-diagnostics.lua`
+
+```lua
+-- Default configuration
+require("tiny-inline-diagnostic").setup {
+  signs = {
+    left = "",
+    right = "",
+    diag = "●",
+    arrow = "    ",
+    up_arrow = "    ",
+    vertical = " │",
+    vertical_end = " └",
+  },
+  hi = {
+    error = "DiagnosticError",
+    warn = "DiagnosticWarn",
+    info = "DiagnosticInfo",
+    hint = "DiagnosticHint",
+    arrow = "NonText",
+    background = "CursorLine", -- Can be a highlight or a hexadecimal color (#RRGGBB)
+    mixing_color = "None", -- Can be None or a hexadecimal color (#RRGGBB). Used to blend the background color with the diagnostic background color with another color.
+  },
+  blend = {
+    factor = 0.27,
+  },
+  options = {
+    -- Show the source of the diagnostic.
+    show_source = false,
+
+    -- Throttle the update of the diagnostic when moving cursor, in milliseconds.
+    -- You can increase it if you have performance issues.
+    -- Or set it to 0 to have better visuals.
+    throttle = 20,
+
+    -- The minimum length of the message, otherwise it will be on a new line.
+    softwrap = 15,
+
+    -- If multiple diagnostics are under the cursor, display all of them.
+    multiple_diag_under_cursor = false,
+
+    -- Enable diagnostic message on all lines.
+    -- /!\ Still an experimental feature, can be slow on big files.
+    multilines = false,
+
+    overflow = {
+      -- Manage the overflow of the message.
+      --    - wrap: when the message is too long, it is then displayed on multiple lines.
+      --    - none: the message will not be truncated.
+      --    - oneline: message will be displayed entirely on one line.
+      mode = "wrap",
+    },
+
+    -- Format the diagnostic message.
+    -- Example:
+    -- format = function(diagnostic)
+    --     return diagnostic.message .. " [" .. diagnostic.source .. "]"
+    -- end,
+    format = nil,
+
+    --- Enable it if you want to always have message with `after` characters length.
+    break_line = {
+      enabled = false,
+      after = 30,
+    },
+
+    virt_texts = {
+      priority = 2048,
+    },
+  },
+}
+```
+
+open nvim and type `:Mason` run this command
+
+```bash
+:MasonInstall gopls intelephense html-lsp json-lsp kotlin-language-server lua-language-server markdownlint-cli2 phpmd phpstan prisma-language-server python-lsp-server sql-formatter sqls css-lsp deno docker-compose-language-service dockerfile-language-server emmet-language-server eslint-lsp gofumpt goimports golangci-lint golangci-lint-langserver golines gomodifytags tailwindcss-language-server ts_ls vue-language-server svelte-language-server clangd rust-analyzer ansible-language-server bash-language-server blade-formatter cmake-language-server terraform-ls typescript-language-server 
+```

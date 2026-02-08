@@ -1,0 +1,283 @@
+---
+title: 'Tmux'
+description: 'my tmux configuration'
+date: '01-19-2025 10:40:00'
+tags: ["tmux"]
+draft: false
+---
+
+# Tmux
+
+## Installation
+
+```bash
+sudo apt install tmux
+```
+
+then run `tmux new -s explore`
+
+## keybinding
+
+- `ctrl+L+w` to create a new window
+- `ctrl+L+1` to switch to specific window 1
+- `ctrl+L+n` to cycle next window
+- `ctrl+L+p` to cycle prev window
+
+- `tmux new -s test` to create a new session name test
+- `tmux a -t explore` to attach a session name explore
+- `tmux ls` to list all session
+- `ctrl+L+d` to detach session
+- `ctrl+L+]` to cycle next session
+- `ctrl+L+[` to cycle prev session
+
+- `ctrl+L+|` to split vertical pane
+- `ctrl+L+"` to split horizontal pane
+- `ctrl+L+o` to cycle next pane
+
+### install tmux plugin
+
+```bash
+git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+```
+
+- download yq binary [`here`](https://github.com/mikefarah/yq/releases)
+- extract it and move it to `/usr/loca/bin`
+
+### personal config
+
+Create this file in `~/.tmux/ctp_cpu.conf`
+
+```
+%hidden MODULE_NAME="ctp_cpu"
+
+set -gq '@cpu_low_bg_color' '#{E:@thm_green}'
+set -gq '@cpu_medium_bg_color' '#{E:@thm_yellow}'
+set -gq '@cpu_high_bg_color' '#{E:@thm_red}'
+
+set -ogq "@catppuccin_${MODULE_NAME}_icon" ' '
+set -ogq "@catppuccin_${MODULE_NAME}_color" '#{l:#{cpu_bg_color}}'
+set -ogq "@catppuccin_${MODULE_NAME}_text" '#{l:#{cpu_percentage}}'
+
+source -F '#{TMUX_PLUGIN_MANAGER_PATH}/tmux/utils/status_module.conf'
+```
+
+create this file in `~/.tmux/ctp_memory.conf`
+
+```
+%hidden MODULE_NAME='ctp_memory'
+
+set -gq '@ram_low_bg_color' '#{E:@thm_green}'
+set -gq '@ram_medium_bg_color' '#{E:@thm_yellow}'
+set -gq '@ram_high_bg_color' '#{E:@thm_red}'
+
+set -ogq "@catppuccin_${MODULE_NAME}_icon" ' '
+set -ogq "@catppuccin_${MODULE_NAME}_color" '#{l:#{ram_bg_color}}'
+set -ogq "@catppuccin_${MODULE_NAME}_text" '#{l:#{ram_percentage}}'
+
+source -F '#{TMUX_PLUGIN_MANAGER_PATH}/tmux/utils/status_module.conf'
+```
+
+create this file in `~/.tmux/primary_ip.conf`
+
+```
+%hidden MODULE_NAME='primary_ip'
+
+set -ogq "@catppuccin_${MODULE_NAME}_icon" '#{l:#{primary_ip_icon}} '
+set -ogqF "@catppuccin_${MODULE_NAME}_color" '#{E:@thm_lavender}'
+set -ogq "@catppuccin_${MODULE_NAME}_text" '#{l:#{primary_ip}}'
+
+source -F '#{TMUX_PLUGIN_MANAGER_PATH}/tmux/utils/status_module.conf'
+```
+
+edit this file `~/.tmux.conf`
+
+```
+#--------------------------------------------------------------------------
+# Configuration
+#--------------------------------------------------------------------------
+
+# Use Vi mode
+setw -g mode-keys vi
+
+# Increase scrollback buffer size
+set -g history-limit 10000
+
+# Start window and pane numbering from 1 for easier switching
+set -g base-index 1
+setw -g pane-base-index 1
+
+# Allow automatic renaming of windows
+set -g allow-rename on
+
+# Renumber windows when one is removed.
+set -g renumber-windows on
+
+# Enable undercurl
+set -as terminal-overrides ',*:Smulx=\E[4::%p1%dm'
+
+# Enable undercurl colors
+set -as terminal-overrides ',*:Setulc=\E[58::2::%p1%{65536}%/%d::%p1%{256}%/%{255}%&%d::%p1%{255}%&%d%;m'
+
+# Enable hyperlinks
+set -as terminal-overrides ',*:Hls=\E]8;id=%p1%s;%p2%s\E\\:Hlr=\E]8;;\E\\'
+
+# Allow the mouse to resize windows and select tabs
+set -g mouse on
+
+# Allow tmux to set the terminal title
+set -g set-titles on
+
+# Monitor window activity to display in the status bar
+setw -g monitor-activity on
+
+# A bell in another window should cause a bell in the current window
+set -g bell-action any
+
+# Don't show distracting notifications
+set -g visual-bell off
+set -g visual-activity off
+
+# Focus events enabled for terminals that support them
+set -g focus-events on
+
+# Useful when using sharing a session with different size terminals
+setw -g aggressive-resize on
+
+# don't detach tmux when killing a session
+set -g detach-on-destroy off
+
+# address vim mode switching delay (http://superuser.com/a/252717/65504)
+set -s escape-time 0
+
+#--------------------------------------------------------------------------
+# Status line
+#--------------------------------------------------------------------------
+
+# Status line customisation
+set-option -g status-left-length 100
+set-option -g status-right-length 100
+
+set-option -g status-left " #{session_name}  "
+# set-option -g status-left " " # Screencast mode
+
+set-option -g status-right "#{pane_title} "
+# set-option -g status-right "#[fg=#1D9BF0]#[fg=#c0caf5] @jessarchercodes   #[fg=#ffffff] #[fg=#c0caf5]jessarcher   #[fg=#06B6D4]爵#[fg=#94A3B8]jessarcher.com "
+# set-option -g status-right "#[fg=#1D9BF0]#[fg=#c0caf5] jessarchercodes   #[fg=#ffffff] #[fg=#c0caf5]jessarcher "
+
+# set-option -g status-style "fg=#545c7e bg=#1f2335"
+set-option -g status-style "fg=#545c7e bg=default" # Screencast mode
+
+# set-option -g window-status-format "#[fg=#545c7e]#{window_index}/#{pane_current_command} "
+# set-option -g window-status-current-format "#[fg=#545c7e]#{window_index}/#[fg=#E9E9EA]#{pane_current_command} "
+set-option -g window-status-format "#{window_index}󰿟#{pane_current_command} "
+set-option -g window-status-current-format "#[fg=#545c7e]#{window_index}󰿟#[fg=#E9E9EA]#{pane_current_command} "
+# set-option -g window-status-format "· " # Screencast mode
+# set-option -g window-status-current-format "· " # Screencast mode
+
+set-option -g window-status-current-style "fg=#E9E9EA"
+set-option -g window-status-activity-style none
+
+set-option -g pane-active-border-style "fg=#1f2335"
+set-option -g pane-border-style "fg=#1f2335"
+
+#--------------------------------------------------------------------------
+# Key Bindings
+#--------------------------------------------------------------------------
+
+# -r means that the bind can repeat without entering prefix again
+# -n means that the bind doesn't use the prefix
+
+# Set the prefix to Ctrl+.
+set -g prefix C-l
+
+# Send prefix to a nested tmux session by doubling the prefix
+bind C-l send-prefix
+
+# 'PREFIX r' to reload of the config file
+unbind r
+bind r source-file ~/.tmux.conf\; display-message '~/.tmux.conf reloaded'
+
+bind | split-window -h -c "#{pane_current_path}"
+bind - split-window -v -c "#{pane_current_path}"
+
+# Change the path for newly created windows
+bind w new-window -c "#{pane_current_path}"
+
+# Switch between previous and next windows with repeatable
+bind -r n next-window
+bind -r p previous-window
+
+# Move the current window to the next window or previous window position
+bind -r N run-shell "tmux swap-window -t $(expr $(tmux list-windows | grep \"(active)\" | cut -d \":\" -f 1) + 1)"
+bind -r P run-shell "tmux swap-window -t $(expr $(tmux list-windows | grep \"(active)\" | cut -d \":\" -f 1) - 1)"
+
+bind-key > swap-window -t +1 \; next
+bind-key < swap-window -t -1 \; prev
+
+# Switch between two most recently used windows
+bind Space last-window
+
+bind -r ] switch-client -n
+bind -r [ switch-client -p
+
+set-option -g status-position bottom
+
+# List of plugins
+set -g @plugin 'tmux-plugins/tpm'
+
+# theme / style
+set -g @plugin 'catppuccin/tmux'
+set -g @plugin 'joshmedeski/tmux-nerd-font-window-name'
+set -g @plugin 'alexwforsythe/tmux-which-key'  # prefix + space
+set -g @plugin 'tmux-plugins/tmux-cpu'
+set -g @plugin 'tmux-plugins/tmux-battery'
+set -g @plugin 'dreknix/tmux-primary-ip'
+
+### configure plugins
+
+### https://github.com/catppuccin/tmux
+set -g @catppuccin_flavor 'mocha'
+set -g @catppuccin_window_status_style 'none'
+set -g @catppuccin_window_number_position 'right'
+set -g @catppuccin_window_status 'no'
+set -g @catppuccin_window_default_text '#W'
+set -g @catppuccin_window_current_fill 'number'
+set -g @catppuccin_window_current_text '#W'
+set -g @catppuccin_window_current_color '#{E:@thm_surface_2}'
+set -g @catppuccin_date_time_text '%y-%d-%m %H:%M'
+set -g @catppuccin_status_module_text_bg '#{E:@thm_mantle}'
+
+# source the plugin here
+run '#{TMUX_PLUGIN_MANAGER_PATH}/tmux/catppuccin.tmux'
+
+# load custom moudules
+source -F '#{d:current_file}/.tmux/ctp_cpu.conf'
+source -F '#{d:current_file}/.tmux/ctp_memory.conf'
+source -F '#{d:current_file}/.tmux/primary_ip.conf'
+
+# set left and right status bar
+set -g allow-rename off
+set -g status-position top
+set -g status-interval 5
+set -g status-left-length 100
+set -g status-right-length 100
+set -g status-left '#{E:@catppuccin_status_session} '
+set -gF status-right '#{E:@catppuccin_status_primary_ip}'
+set -agF status-right '#{E:@catppuccin_status_ctp_cpu}'
+set -agF status-right '#{E:@catppuccin_status_ctp_memory}'
+if 'test -r /sys/class/power_supply/BAT*' {
+  set -agF status-right '#{E:@catppuccin_status_battery}'
+}
+set -ag status-right '#{E:@catppuccin_status_date_time}'
+
+# Initialize TMUX plugin manager (keep this line at the very bottom of tmux.conf)
+run '~/.tmux/plugins/tpm/tpm'
+```
+
+Run `tmux new -s explore` this will create a new tmux session named explore, to exit session `ctrl+l+d`
+
+Run `ctrl+l+r` to reload tmux and `ctrl+l+I` to install tmux plugin wait until succeed then reload tmux again
+
+screenshot
+
+![tmux](https://minio.labkita.my.id/image/tmux.png)

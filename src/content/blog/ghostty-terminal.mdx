@@ -1,0 +1,44 @@
+---
+title: 'Ghostty Terminal'
+description: 'my personal ghostty terminal config'
+date: '02-19-2025 08:45:00'
+tags: ["ghostty", "terminal"]
+draft: false
+---
+
+create file in `.config/ghostty/config`
+
+```
+# The syntax is "key = value". The whitespace around the
+# equals doesn't matter.
+background = 282c34
+foreground = ffffff
+
+# Comments start with a `#` and are only valid on their own line.
+# Blank lines are ignored!
+
+keybind = ctrl+z=close_surface
+keybind = ctrl+d=new_split:right
+
+# Empty values reset the configuration to the default value
+font-family = "JetBrains Mono"
+font-size = 20
+
+theme = "catppuccin-frappe"
+
+background-opacity = 0.95
+background-blur = true
+
+window-width = 180
+window-height = 50
+
+window-subtitle = false
+window-save-state = always
+
+macos-titlebar-style = hidden
+window-padding-x = 1
+window-padding-y = 1
+
+auto-update = download
+auto-update-channel = stable
+```

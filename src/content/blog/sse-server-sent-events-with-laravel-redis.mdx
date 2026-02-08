@@ -1,0 +1,704 @@
+---
+title: 'SSE (Server-Sent Events) with Laravel & Redis'
+description: 'A complete guide to implementing SSE (Server-Sent Events) in Laravel'
+date: '09-12-2025 09:24:00'
+tags: ["platform as a service", "laravel"]
+draft: false
+---
+
+A complete guide to implementing SSE (Server-Sent Events) in Laravel, including Redis integration for real-time notifications.
+
+---
+
+## 1. SSE Basics in Laravel
+
+**Route & Controller:**
+```php
+// routes/web.php
+Route::get('/sse', [SseController::class, 'stream']);
+
+// app/Http/Controllers/SseController.php
+use Symfony\Component\HttpFoundation\StreamedResponse;
+
+public function stream()
+{
+    return response()->stream(function () {
+        while (true) {
+            echo "data: " . json_encode(['time' => now()]) . "\n\n";
+            ob_flush();
+            flush();
+            sleep(1);
+        }
+    }, 200, [
+        'Content-Type' => 'text/event-stream',
+        'Cache-Control' => 'no-cache',
+        'Connection' => 'keep-alive',
+    ]);
+}
+```
+
+**Frontend:**
+```js
+const evtSource = new EventSource("/sse");
+evtSource.onmessage = function(event) {
+    const data = JSON.parse(event.data);
+    console.log("Data from server:", data);
+};
+```
+
+> **Note:** Make sure Nginx `proxy_buffering off` so data is sent directly to the client.
+
+---
+
+## 2. Store Data in Redis
+
+**Storing notifications in Redis:**
+```php
+Cache::put('notifications', $notifications, 60); // expires in 60s
+
+return response()->stream(function () {
+    while (true) {
+        $notifications = Cache::pull('notifications', []);
+        foreach ($notifications as $note) {
+            echo "data: " . json_encode($note) . "\n\n";
+        }
+        ob_flush();
+        flush();
+        sleep(1);
+    }
+}, 200, [
+    'Content-Type' => 'text/event-stream',
+    'Cache-Control' => 'no-cache',
+    'Connection' => 'keep-alive',
+]);
+```
+
+---
+
+## 3. Store Data in Database
+
+**Notification Example to Database:**
+```php
+class UserRegisteredNotification extends Notification
+{
+    protected $user;
+    public function __construct($user) { $this->user = $user; }
+    public function via($notifiable) { return ['database']; }
+    public function toDatabase($notifiable) {
+        return [
+            'title' => 'New User',
+            'message' => $this->user->name . ' has registered.',
+        ];
+    }
+}
+```
+
+**Streaming from Database:**
+```php
+return response()->stream(function () {
+    $userId = 1; // Adjust to user (e.g. admin)
+    while (true) {
+        $notifications = DB::table('notifications')
+            ->where('notifiable_id', $userId)
+            ->whereNull('read_at')
+            ->orderBy('created_at', 'desc')
+            ->get();
+        foreach ($notifications as $note) {
+            echo "data: " . json_encode([
+                'id' => $note->id,
+                'title' => $note->data['title'] ?? '',
+                'message' => $note->data['message'] ?? '',
+                'time' => $note->created_at
+            ]) . "\n\n";
+            // Mark as read
+            DB::table('notifications')
+                ->where('id', $note->id)
+                ->update(['read_at' => now()]);
+        }
+        ob_flush();
+        flush();
+        sleep(1);
+    }
+}, 200, [
+    'Content-Type' => 'text/event-stream',
+    'Cache-Control' => 'no-cache',
+    'Connection' => 'keep-alive',
+]);
+```
+
+---
+
+## 4. Redis Get/Set Flag
+
+- Store flag in Redis when notification is created:
+```php
+Redis::set("user:{$admin->id}:has_new_notification", true);
+```
+- SSE loop only checks flag:
+```php
+while (true) {
+    if (Redis::get("user:$userId:has_new_notification") === 'true') {
+        Redis::del("user:$userId:has_new_notification");
+        $notifications = ...; // then query DB
+        // send data to client
+    }
+    sleep(1);
+}
+```
+
+---
+
+## 5. Redis Pub/Sub
+
+- Publish to Redis when notification is created:
+```php
+Redis::publish("notifications:{$admin->id}", json_encode([
+    'title' => 'New User',
+    'message' => $event->user->name . ' has registered.',
+    'time' => now()->toDateTimeString(),
+]));
+```
+
+Because Redis Pub/Sub is blocking, we can't use Laravel Redis facade in a regular loop. Use the low-level Redis extension directly:
+
+```php
+public function stream()
+{
+    $userId = 1; // change according to logged-in user if there is an auth system
+    $channel = "notifications:$userId";
+    return response()->stream(function () use ($channel) {
+        $redis = new \Redis();
+        $redis->connect('127.0.0.1', 6379);
+        $redis->subscribe([$channel], function ($redis, $chan, $msg) {
+            echo "data: {$msg}\n\n";
+            ob_flush();
+            flush();
+        });
+    }, 200, [
+        'Content-Type' => 'text/event-stream',
+        'Cache-Control' => 'no-cache',
+        'Connection' => 'keep-alive',
+    ]);
+}
+```
+
+**Advantages:**
+- Event-driven, no polling
+- Scalable if Redis is strong enough
+
+**Notes:**
+- Redis Pub/Sub does not store messages (realtime only)
+- Use Laravel Octane/worker to avoid blocking
+
+---
+
+## 6. Redis Pub/Sub + Database
+
+- Publish to Redis, data still in DB:
+```php
+$admin->notify(new UserRegisteredNotification($event->user));
+Redis::publish("notifications:{$admin->id}", 'new');
+```
+- Subscribe Redis, then query DB:
+```php
+public function stream()
+{
+    $userId = 1; // or from session/auth
+    $channel = "notifications:$userId";
+    return response()->stream(function () use ($userId, $channel) {
+        $redis = new \Redis();
+        $redis->connect('127.0.0.1', 6379);
+        $redis->subscribe([$channel], function ($redis, $chan, $msg) use ($userId) {
+            $notification = DB::table('notifications')
+                ->where('notifiable_id', $userId)
+                ->whereNull('read_at')
+                ->latest()
+                ->first();
+            if ($notification) {
+                echo "data: " . json_encode([
+                    'id' => $notification->id,
+                    'title' => $notification->data['title'] ?? '',
+                    'message' => $notification->data['message'] ?? '',
+                    'time' => $notification->created_at
+                ]) . "\n\n";
+                DB::table('notifications')->where('id', $notification->id)->update([
+                    'read_at' => now()
+                ]);
+                ob_flush();
+                flush();
+            }
+        });
+    }, 200, [
+        'Content-Type' => 'text/event-stream',
+        'Cache-Control' => 'no-cache',
+        'Connection' => 'keep-alive',
+    ]);
+}
+```
+
+**Advantages:**
+- Redis is not used to store payload
+- Notifications are still stored and queried from Laravel DB
+- Real-time, no continuous polling
+- Suitable for Laravel + SSE without third-party service
+
+**Notes:**
+- Redis Pub/Sub is blocking (the process will wait for messages)
+- Laravel Redis facade is not designed for such operations (will hang worker/request)
+- The above implementation uses the \Redis PHP extension directly
+- Make sure phpredis extension is active (`php -m | grep redis`)
+- phpredis is faster and more stable for Pub/Sub
+
+If using Predis (not phpredis extension):
+```php
+$client = new \Predis\Client();
+
+$client->pubSubLoop()->subscribe("notifications:1", function ($message) {
+    // Not all versions of predis support this well in Laravel
+});
+```
+
+---
+
+### Case: 1000 User SSE with Redis Pub/Sub
+
+Each user opens an SSE connection → 1 long-lived HTTP connection, and if using Redis->subscribe() directly:
+- 1 Redis connection per user (because each SSE listener opens its own Redis)
+- 1 HTTP (SSE) connection from browser to server
+
+#### How many connections can be handled?
+
+1. **Redis Connections**
+    - Redis is very fast and lightweight, by default can handle ~10,000 simultaneous connections
+    - 1000 active Redis clients (1 per user) is heavy because Pub/Sub is blocking (1 thread/process per connection on server)
+    - Main issue: PHP process, not Redis itself
+    - Laravel (without Octane/worker) is not efficient for long-running processes like subscribe()
+
+2. **HTTP Connections**
+    - Nginx by default can handle ~1024 active connections (depends on worker_connections config)
+    - HTTP SSE is not heavy per connection, but server must handle high concurrent connections
+    - Regular Laravel (without Octane) is not ideal for >100 SSE users
+        - Redis->subscribe() is blocking = 1 PHP process hangs on each connection
+        - PHP-FPM is not for long-lived requests
+
+**Solution:**
+1. Laravel Octane (Swoole/RoadRunner)
+2. Separate SSE handler from Laravel (Laravel → Publish to Redis → NodeJS/GO SSE Worker)
+3. Use Redis Flag (get/set) + light polling (can handle hundreds of users without special worker)
+
+| Condition            | Recommendation                                    |
+|----------------------|--------------------------------------------------|
+| < 100 active users   | Laravel + SSE + Redis Flag (polling 1–2 seconds) |
+| 100–1000 active users| Laravel Octane + Redis Pub/Sub                   |
+| >1000 active users   | Separate SSE server (NodeJS/Go) + Redis Pub/Sub  |
+| Want fast & cheap    | Redis flag + light polling                       |
+
+---
+
+## 7. Redis Pub/Sub + SSE Architecture with Go/NodeJS
+
+1. **Laravel App**
+    - Stores notifications to DB (notifications)
+    - Publishes signal to Redis channel `notifications:<user_id>`
+2. **SSE Server (Node.js/Go)**
+    - Subscribes to Redis Pub/Sub
+    - When a new message arrives, fetch data from database (or via Laravel API)
+    - Sends to client via SSE
+
+```go
+package main
+
+import (
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+
+	"github.com/go-redis/redis/v8"
+	_ "github.com/lib/pq"
+	"golang.org/x/net/context"
+)
+
+var ctx = context.Background()
+var clients = make(map[string][]chan string) // map[user_id] to list of channels
+
+var rdb = redis.NewClient(&redis.Options{
+	Addr: "localhost:6379",
+})
+
+var db *sql.DB
+
+func initDB() {
+	var err error
+	db, err = sql.Open("postgres", "postgres://user:pass@localhost:5432/dbname?sslmode=disable")
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func redisSubscribe(userID string) {
+	pubsub := rdb.Subscribe(ctx, "notifications:"+userID)
+	ch := pubsub.Channel()
+
+	go func() {
+		for msg := range ch {
+			// Fetch notification from DB (or via Laravel API)
+			row := db.QueryRow("SELECT id, data, created_at FROM notifications WHERE notifiable_id=$1 ORDER BY created_at DESC LIMIT 1", userID)
+
+			var id string
+			var data string
+			var createdAt string
+
+			err := row.Scan(&id, &data, &createdAt)
+			if err != nil {
+				log.Println("DB error:", err)
+				continue
+			}
+
+			payload, _ := json.Marshal(map[string]interface{}{
+				"id":    id,
+				"data":  json.RawMessage(data),
+				"time":  createdAt,
+			})
+
+			for _, ch := range clients[userID] {
+				ch <- string(payload)
+			}
+		}
+	}()
+}
+
+func sseHandler(w http.ResponseWriter, r *http.Request) {
+	userID := r.URL.Query().Get("user_id")
+	if userID == "" {
+		http.Error(w, "user_id is required", http.StatusBadRequest)
+		return
+	}
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+
+	messageChan := make(chan string)
+	clients[userID] = append(clients[userID], messageChan)
+
+	// Subscribe Redis channel (once per user)
+	if len(clients[userID]) == 1 {
+		redisSubscribe(userID)
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	for {
+		select {
+		case msg := <-messageChan:
+			fmt.Fprintf(w, "data: %s\n\n", msg)
+			flusher.Flush()
+		case <-r.Context().Done():
+			log.Printf("Client %s disconnected", userID)
+			return
+		}
+	}
+}
+func main() {
+	initDB()
+	http.HandleFunc("/sse", sseHandler)
+	log.Println("SSE server running on :8080")
+	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+```
+
+**Frontend:**
+```html
+<script>
+const userId = 1;
+const es = new EventSource("http://localhost:8080/sse?user_id=" + userId);
+es.onmessage = function(event) {
+    const data = JSON.parse(event.data);
+    console.log("New notification:", data);
+};
+</script>
+```
+
+---
+
+## 8. Laravel SSE Tips
+
+- Disable middleware that buffers response (ThrottleRequests, TrimStrings)
+- Check `php.ini` → `output_buffering=4096` (change to off if needed)
+- Add `ob_implicit_flush(true)` at the start of stream()
+- Important headers:
+    - `'Cache-Control' => 'no-cache, no-transform'`
+    - `'X-Accel-Buffering' => 'no'` (for Nginx)
+    - `'Content-Type' => 'text/event-stream'`
+    - `'Connection' => 'keep-alive'`
+
+**Nginx config:**
+```
+location /sse {
+    proxy_pass http://your-php-backend;
+    proxy_http_version 1.1;
+    proxy_set_header Connection '';
+    proxy_set_header Cache-Control 'no-cache';
+    proxy_set_header X-Accel-Buffering no;
+    chunked_transfer_encoding on;
+    proxy_buffering off;
+    proxy_cache off;
+    keepalive_requests 1000;
+}
+```
+
+- proxy_http_version 1.1 → so keep-alive works
+- proxy_set_header Connection '' → don't override to close
+- proxy_read_timeout 3600 → SSE connection can last 1 hour
+- X-Accel-Buffering no → prevent Nginx buffering, so data is sent directly to browser
+
+**Important Notes:**
+- Use correct SSE headers: Content-Type: text/event-stream
+- Use echo, not print_r, dd(), or var_dump() — as those may call Laravel formatter
+- Use set_time_limit(0); if you want the stream to run continuously
+
+---
+
+## 9. SSE Security
+
+EventSource cannot send custom headers like Authorization.
+
+**Solution:**
+
+### a. Use token in URL query string
+```js
+const token = 'your_jwt_token_here';
+const evtSource = new EventSource(`/sse/notifications?token=${token}`);
+```
+
+```php
+public function stream(Request $request)
+{
+    $token = $request->query('token');
+    if (!$token || !auth()->once(['api_token' => $token])) {
+        abort(403);
+    }
+    return response()->stream(...);
+}
+```
+- Token in URL is visible in access logs and browser history
+- Limit token lifetime
+- Use only for SSE (not main login token)
+- Make sure server sends CORS headers if cross-domain
+
+### b. Polyfill (Experimental)
+- If you need Authorization header, you can use a polyfill like event-source-polyfill (fetch + ReadableStream)
+- Not native, more complex, not as reliable as native EventSource
+
+### c. Via COOKIE
+- As long as before the SSE page, user is already logged in, can be verified in backend
+
+---
+
+## 10. Redis Subscribe in Octane
+
+- Redis client (phpredis) is not safe to use between workers in subscribe() mode
+- Solution: create a separate command worker
+
+Because Octane runs Laravel in long-lived workers
+
+- Laravel does not reboot app on every request (unlike traditional PHP-FPM)
+- Each request is handed to a worker that stays alive
+- If 1 worker is stuck in a blocking process (e.g. subscribe), that worker can't serve other requests
+
+solution: use a separate worker for Redis subscribe.
+
+create new command
+
+```bash
+php artisan make:command RedisSubscriber
+```
+
+```php
+// app/Console/Commands/RedisSubscriber.php
+public function handle()
+{
+    Redis::subscribe(['notif-channel'], function ($message) {
+        // Save to database, broadcast via SSE, etc
+    });
+}
+```
+
+Use Laravel Octane Hooks if you need to clean Redis per worker
+```php
+Octane::tick(function () {
+    Redis::disconnect();
+});
+
+Octane::booting(fn () => Redis::disconnect());
+```
+
+- For Predis (REDIS_CLIENT=predis): safe in Octane, but subscribe is still blocking
+
+---
+
+## 11. Redis Pub/Sub + SSE Architecture (Octane/Worker)
+
+![sse](https://webassets.labkita.my.id/blog/image/sse.png)
+
+**Worker:**
+```php
+// app/Console/Commands/RedisNotifier.php
+public function handle()
+{
+    Redis::subscribe(['notif-channel'], function ($message) {
+        $payload = json_decode($message, true);
+        $userId = $payload['user_id'];
+        Redis::rpush("sse:notifications:user:{$userId}", $message);
+    });
+}
+```
+
+**SSE Endpoint:**
+```php
+Route::get('/sse/notifications', function (Request $request) {
+    $user = auth()->user();
+    return response()->stream(function () use ($user) {
+        $redisKey = "sse:notifications:user:{$user->id}";
+        while (true) {
+            $message = Redis::blpop($redisKey, 10);
+            if ($message) {
+                echo "data: {$message[1]}\n\n";
+                ob_flush(); flush();
+            }
+        }
+    }, 200, [
+        'Content-Type' => 'text/event-stream',
+        'Cache-Control' => 'no-cache',
+        'X-Accel-Buffering' => 'no',
+        'Connection' => 'keep-alive',
+    ]);
+});
+```
+
+`Redis::blpop($key, 10)` in SSE route:
+- Blocking but with timeout → worker doesn't hang forever
+- Safe to use in Octane
+
+**Frontend:**
+```js
+document.addEventListener('DOMContentLoaded', () => {
+    const evtSource = new EventSource("/sse/notifications");
+    evtSource.onmessage = function (event) {
+        const data = JSON.parse(event.data);
+        console.log("Notif:", data);
+    };
+    evtSource.onerror = function () {
+        console.error("SSE connection error");
+    };
+});
+```
+
+---
+
+## 12. Heartbeat (Ping) to Keep Connection Alive
+
+- Send ping event every few seconds so connection is not considered idle
+```php
+Route::get('/sse', function () {
+    return response()->stream(function () {
+        while (true) {
+            echo "event: ping\ndata: {}\n\n";
+            ob_flush(); flush();
+            sleep(25);
+        }
+    }, 200, [
+        'Content-Type' => 'text/event-stream',
+        'Cache-Control' => 'no-cache',
+        'X-Accel-Buffering' => 'no',
+        'Connection' => 'keep-alive',
+    ]);
+});
+```
+
+---
+
+## 13. Redis RPUSH & LRANGE for Notifications
+
+- Send notification:
+```php
+Redis::rpush("notifications:{$userId}", json_encode([
+    'id' => Str::uuid(),
+    'title' => 'New message',
+    'message' => 'You have a new message!',
+    'timestamp' => now()->timestamp,
+]));
+```
+- Get notifications in SSE:
+```php
+$notifs = Redis::lrange("notifications:{$userId}", 0, -1);
+Redis::del("notifications:{$userId}");
+```
+
+**Advantages:**
+- Simple, non-blocking
+- Data can be fetched anytime
+- Scalable (list per user)
+
+**Multi-tab solution:**
+- Don't delete (DEL) directly on client
+- Add TTL (EXPIRE) so Redis doesn't get full
+- Client stores last_seen_id, only shows new ones
+
+**Streaming example:**
+```php
+return response()->stream(function () {
+    $userId = auth()->id();
+    $cacheKey = "notifications:user:{$userId}";
+    $lastSeenId = null;
+    ini_set('output_buffering', 'off');
+    ini_set('zlib.output_compression', 'off');
+    ob_implicit_flush(true);
+    while (true) {
+        $all = Redis::lrange($cacheKey, 0, -1);
+        if ($all) {
+            foreach ($all as $raw) {
+                $notif = json_decode($raw, true);
+                if ($lastSeenId && $notif['id'] <= $lastSeenId) continue;
+                echo "data: " . json_encode($notif) . "\n\n";
+                $lastSeenId = $notif['id'];
+            }
+            ob_flush();
+            flush();
+        }
+        sleep(2);
+    }
+}, 200, [
+    'Content-Type'      => 'text/event-stream',
+    'Cache-Control'     => 'no-cache',
+    'X-Accel-Buffering' => 'no',
+    'Connection'        => 'keep-alive',
+]);
+```
+
+**Frontend:**
+```js
+document.addEventListener('DOMContentLoaded', () => {
+    const evtSource = new EventSource("/sse/notifications");
+    evtSource.onmessage = function (event) {
+        const data = JSON.parse(event.data);
+        console.log("Notif:", data);
+    };
+    evtSource.onerror = function () {
+        console.error("SSE connection error");
+    };
+});
+```
+
+---
+
+## References
+- [Laravel Docs: Broadcasting](https://laravel.com/docs/broadcasting)
+- [Redis Pub/Sub](https://redis.io/docs/manual/pubsub/)
+- [MDN: Server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events)

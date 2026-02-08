@@ -1,0 +1,16 @@
+---
+title: 'carbon snippets'
+description: 'carbon snippets'
+date: '03-10-2024 00:00:00'
+tags: ["carbon", "snippets"]
+draft: false
+---
+
+translate carbon
+
+```php
+$c = Carbon::createFromLocaleFormat('l d/m/Y', 'id', 'Jumat 12/01/2024')->startOfDay();
+$c->settings(['formatFunction' => 'translatedFormat'])
+    ->locale('id')
+    ->format('l d F Y');
+```

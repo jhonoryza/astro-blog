@@ -1,0 +1,41 @@
+---
+title: 'Oracle Cloud Firewall'
+description: 'Oracle Cloud Firewall'
+date: '07-29-2024 00:00:00'
+tags: ["oracle cloud", "firewall"]
+draft: false
+---
+
+this only for ubuntu server we can install firewalld 
+
+```bash
+sudo apt-get install firewalld
+sudo systemctl enable firewalld
+sudo systemctl start firewalld
+```
+
+You only need to do this one time. It will still be there after a reboot.
+
+Then, to open port 80:
+
+```bash
+sudo firewall-cmd --zone=public --add-port=80/tcp --permanent  #  or --add-service=http 
+sudo firewall-cmd --reload
+```
+
+To verify:
+
+`sudo firewall-cmd --list-all`
+
+mematikan semua firewal
+
+```bash
+sudo systemctl stop firewalld
+sudo systemctl disable firewalld
+```
+
+Atau juga bisa mengganti zona default menjadi trusted, yang secara bawaan mengizinkan semua lalu lintas.
+
+`sudo firewall-cmd --set-default-zone=trusted`
+`sudo systemctl restart firewalld`
+

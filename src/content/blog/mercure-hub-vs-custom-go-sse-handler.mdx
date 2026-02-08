@@ -1,0 +1,272 @@
+---
+title: 'Mercure Hub vs Custom Go SSE Handler'
+description: 'mercure hub or custom go sse handler ?'
+date: '09-13-2025 19:36:00'
+tags: ["mercurehub", "go", "sse"]
+draft: false
+---
+
+## 📋 Overview
+
+Dalam pengembangan aplikasi real-time, pilihan antara membangun SSE handler
+sendiri dengan Go versus menggunakan Mercure Hub adalah pertimbangan penting.
+Artikel ini akan membahas perbandingan keduanya secara detail.
+
+## 🔑 Mengapa Memilih Mercure Hub?
+
+### 1. Protokol & Fitur Matang
+
+Mercure bukan sekadar SSE biasa, tapi merupakan protokol pub/sub yang dibangun
+di atas SSE dengan fitur:
+
+- Dukungan untuk topic dan wildcard subscription
+- JWT-based authorization (akses granular ke event tertentu)
+- Tidak perlu menyusun standar dari awal seperti parsing subscription topic dan
+  validasi token
+
+### 2. Penanganan Koneksi & Skalabilitas
+
+Mercure menangani kompleksitas koneksi skala besar dengan fitur:
+
+- Reconnection otomatis dengan Last-Event-ID
+- Load balancing dan distribusi pesan antar node
+- Backpressure untuk mencegah memory overflow
+- Pengelolaan ribuan koneksi secara efisien
+
+### 3. Integrasi Ekosistem
+
+Mercure menawarkan integrasi yang mudah dengan:
+
+- Framework populer: Symfony, API Platform, Laravel (bundle resmi tersedia)
+- Library client untuk berbagai bahasa (JavaScript, PHP, Go, dll)
+- API yang dirancang khusus untuk komunikasi real-time
+
+### 4. Keamanan
+
+Fitur keamanan built-in meliputi:
+
+- Native support untuk JWT claims
+- Pembatasan akses subscriber berdasarkan topik
+- Sistem filter subscription berbasis claim
+- Perlindungan terhadap kebocoran data sensitif
+
+### 5. Kemudahan Deployment
+
+Mercure menyederhanakan proses deployment:
+
+- Cukup jalankan sebagai binary atau Docker image
+- Publish event via HTTP POST dari berbagai platform
+- Minim konfigurasi tambahan
+
+### 6. Future-proof
+
+Keunggulan jangka panjang:
+
+- Adopsi luas oleh komunitas (terutama PHP & API-first apps)
+- Update dan patch berkala
+- Dukungan komunitas yang kuat
+
+## 🚀 Kapan Sebaiknya Membuat Custom SSE Handler dengan Go?
+
+Custom SSE Handler lebih cocok dalam situasi:
+
+1. Use case sederhana (1-2 channel broadcast, <1.000 user)
+2. Membutuhkan kontrol penuh atas performa
+3. Ingin menghindari dependency tambahan
+
+## 📐 Perbandingan Arsitektur
+
+### Laravel + Mercure Hub
+
+```mermaid
+graph LR
+    Client[Client Browser] <-->|SSE| MercureHub[Mercure Hub Docker]
+    MercureHub <--|POST| Laravel[Laravel App Publisher]
+    Client -.->|JWT Auth| Laravel
+```
+
+**Alur Kerja:**
+
+1. Client melakukan koneksi ke Mercure Hub via SSE
+2. Subscribe ke topik spesifik (misal /chat/{roomId})
+3. Validasi JWT token otomatis di Mercure
+4. Laravel mempublikasi event via HTTP POST
+5. Mercure Hub mendistribusikan ke subscriber yang relevan
+
+**Kelebihan:**
+
+- Laravel tidak menyimpan koneksi SSE
+- Pengelolaan koneksi efisien
+
+**Kekurangan:**
+
+- Memerlukan service tambahan (Mercure container)
+
+### Laravel + Custom Go SSE Handler
+
+```mermaid
+graph LR
+    Client[Client Browser] <-->|SSE| GoHandler[Go SSE Handler]
+    GoHandler <--|REST/gRPC/WS| Laravel[Laravel App Publisher]
+```
+
+**Alur Kerja:**
+
+1. Client terhubung ke Go SSE Handler
+2. Laravel publish event melalui REST/WebSocket/gRPC
+3. Go Handler mendistribusikan event ke subscriber
+4. Semua fitur harus diimplementasi manual
+
+**Kelebihan:**
+
+- Performa tinggi
+- Kontrol penuh
+- Dependency minimal
+
+**Kekurangan:**
+
+- Implementasi fitur dari awal
+- Integrasi Laravel membutuhkan adaptor
+- Maintenance lebih kompleks
+
+## 🔄 Scaling Mercure Hub
+
+Mercure mengadopsi arsitektur Pub/Sub untuk scaling horizontal yang efisien:
+
+### Arsitektur Scaling
+
+- Menggunakan backend storage (Redis/NATS) sebagai message broker
+- Multiple Mercure instances terhubung ke backend yang sama
+- Load balancer (seperti Traefik) mendistribusikan koneksi client
+- Sinkronisasi event antar instance via message broker
+
+### Contoh Konfigurasi Docker Compose
+
+```yaml
+services:
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  mercure1:
+    image: dunglas/mercure
+    restart: unless-stopped
+    environment:
+      MERCURE_PUBLISHER_JWT_KEY: "!ChangeMePublisher!"
+      MERCURE_SUBSCRIBER_JWT_KEY: "!ChangeMeSubscriber!"
+      MERCURE_TRANSPORT_URL: redis://redis:6379/0
+    depends_on:
+      - redis
+    labels:
+      - "traefik.http.services.mercure.loadbalancer.server.port=80"
+      - "traefik.http.routers.mercure.rule=Host(`mercure.domain.com`)"
+      - "traefik.http.routers.mercure.entrypoints=websecure"
+      - "traefik.http.routers.mercure.tls.certresolver=myresolver"
+
+  mercure2:
+    image: dunglas/mercure
+    restart: unless-stopped
+    environment:
+      MERCURE_PUBLISHER_JWT_KEY: "!ChangeMePublisher!"
+      MERCURE_SUBSCRIBER_JWT_KEY: "!ChangeMeSubscriber!"
+      MERCURE_TRANSPORT_URL: redis://redis:6379/0
+    depends_on:
+      - redis
+    labels:
+      - "traefik.http.services.mercure.loadbalancer.server.port=80"
+
+  traefik:
+    image: traefik:v3.1
+    restart: unless-stopped
+    command:
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.myresolver.acme.email=admin@domain.com"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./letsencrypt:/letsencrypt"
+```
+
+## 🔌 Backend Transport Options
+
+### 1. Redis
+
+- **URL Format**: `MERCURE_TRANSPORT_URL=redis://redis:6379/0`
+- **Use Case**: Scaling kecil–menengah
+- ✅ Simple, ringan, mudah dipasang
+- ✅ Pilihan default yang populer
+- ⚠️ Kurang cocok untuk skala sangat besar
+
+### 2. AMQP (RabbitMQ, ActiveMQ)
+
+- **URL Format**:
+  `MERCURE_TRANSPORT_URL=amqp://user:password@rabbitmq:5672/vhost`
+- **Use Case**: Sistem enterprise
+- ✅ Reliable delivery, persistent queue
+- ✅ Integrasi dengan sistem legacy
+- ⚠️ Setup lebih kompleks, latency lebih tinggi
+
+### 3. NATS
+
+- **URL Format**: `MERCURE_TRANSPORT_URL=nats://nats:4222`
+- **Use Case**: High-performance messaging
+- ✅ Latency sangat rendah
+- ✅ Throughput tinggi
+- ⚠️ Perlu setup tambahan untuk durability
+
+### 4. Kafka
+
+- **URL Format**: `MERCURE_TRANSPORT_URL=kafka://kafka:9092/topic`
+- **Use Case**: Big data streaming
+- ✅ Throughput sangat tinggi
+- ✅ Cocok untuk jutaan pesan/detik
+- ⚠️ Setup kompleks, resource intensive
+
+### 5. PostgreSQL
+
+- **URL Format**:
+  `MERCURE_TRANSPORT_URL=postgres://user:password@postgres:5432/dbname`
+- **Use Case**: Aplikasi skala kecil
+- ✅ Mudah jika sudah menggunakan PostgreSQL
+- ✅ Tidak perlu infrastruktur tambahan
+- ⚠️ Tidak cocok untuk skala besar
+
+## 🎯 Panduan Pemilihan Backend
+
+- **< 10k koneksi**: Redis sudah cukup
+- **Enterprise & Queue Complex**: AMQP (RabbitMQ)
+- **Realtime & Low Latency**: NATS
+- **Big Data Streaming**: Kafka
+- **Aplikasi Kecil + PostgreSQL**: PostgreSQL LISTEN/NOTIFY
+
+## 🔍 Perbandingan Fitur
+
+| Aspek             | Mercure Hub           | Go Custom SSE                |
+| ----------------- | --------------------- | ---------------------------- |
+| Setup             | ✅ Cepat (Docker run) | ⚠️ Perlu coding awal         |
+| Topic Support     | ✅ Built-in           | ⚠️ Implementasi manual       |
+| Auth (JWT)        | ✅ Native             | ⚠️ Implementasi manual       |
+| Reconnection      | ✅ Otomatis           | ⚠️ Perlu handling manual     |
+| Scaling           | ✅ Native pub/sub     | ⚠️ Implementasi load balance |
+| Integrasi Laravel | ✅ Library resmi      | ⚠️ Integrasi manual          |
+| Raw Performance   | ⚠️ Good (general)     | ✅ Excellent (tuned)         |
+| Maintenance       | ✅ Ringan             | ⚠️ Lebih kompleks            |
+
+## 💡 Kesimpulan
+
+- **Mercure Hub**: Pilihan tepat untuk aplikasi production kompleks yang
+  membutuhkan fitur lengkap dan setup cepat
+- **Custom Go Handler**: Ideal untuk use case sederhana atau ketika kontrol
+  penuh atas performansi adalah prioritas utama
+
+Pilihan antara keduanya harus didasarkan pada kebutuhan spesifik proyek,
+resources tim, dan target performa yang diinginkan.

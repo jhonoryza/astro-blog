@@ -1,0 +1,59 @@
+---
+title: 'Cloudflare rate limit WAF'
+description: 'Cloudflare’s rate limiting allows you to set up rules that block requests exceeding a certain threshold'
+date: '02-08-2025 17:00:00'
+tags: ["cloudflare", "rate limit", "waf"]
+draft: false
+---
+
+## Why Cloudflare?
+
+Rate limiting ultimately relies on respect — there’s nothing technically stopping a client from making additional requests beyond the limit. However, by using Cloudflare’s WAF, we enforce rate limiting before our servers ever process the request, preventing unnecessary load and improving overall system stability.
+
+By implementing rate limiting at the edge, we reduce “dead requests” and ensure our API remains available and performant. If you're experiencing high server load due to excessive API requests, pairing Laravel’s rate limiting with Cloudflare’s WAF can be a super quick and effective solution.
+
+## What is Rate Limiting?
+
+Rate limiting is a technique used to control the number of requests a client can make within a specific time period. Essentially, it limits the rate at which requests can be made. This helps prevent abuse, such as denial of service attacks, and ensures that your server remains responsive.
+
+Typically, rate limiting works by returning x-ratelimit-* headers in the response, which include details about the current limit, remaining requests, and reset time.
+
+## Rate Limiting on the Edge
+
+Cloudflare’s rate limiting is found under the Security / WAF section of the Cloudflare dashboard. It allows you to set up rules that block requests exceeding a certain threshold before they hit your server.
+
+### Setting Up Cloudflare Rate Limiting
+
+1. Create a New Rule:
+	- Field: URI Path
+	- Operator: Wildcard
+	- Value: /api/* 
+
+2. Match Unique Requests:
+  - Enable `Use Custom Counting Expression`
+  - Header Value: authorization
+  - Field: Response Header
+  - Name: x-ratelimit-remaining
+  - Operator: equals
+  - Value: 0
+
+Alternatively, you can use an expression:
+
+```
+(any(http.response.headers["x-ratelimit-remaining"][*] eq "0"))
+```
+
+3. Set the Rate Limit Trigger:
+  - Configure Cloudflare to block requests after a specified threshold. For example, if your application allows 60 requests per minute, Cloudflare can block the 61st request instantly.
+
+4. Define the Response:
+  - Action: Block
+  - Response Type: Custom JSON
+  - Response Code: 429
+  - Response Body:
+```
+{"message": "Too many attempts."}
+```
+
+5. Set a Block Duration:
+  - Any request that exceeds the threshold during this period will be automatically blocked.

@@ -1,0 +1,130 @@
+---
+title: 'How to Compare Datetime Columns by Date Only in Laravel'
+description: 'compare datetime column in laravel'
+date: '09-12-2025 01:00:00'
+tags: ["datetime", "laravel"]
+draft: false
+---
+
+Suppose you have a `published_at` column of type `datetime`, but when filtering you want to compare only the date (without hour/minute/second).
+
+## 1. Compare Date Only
+
+Laravel Eloquent provides a built-in `whereDate()` method to compare only the date.
+
+**Example:**
+
+```php
+// Get all data where published_at is on 2025-08-25
+$posts = Post::whereDate('published_at', '2025-08-25')->get();
+```
+
+**With operator:**
+
+```php
+// published_at >= 2025-08-01
+$posts = Post::whereDate('published_at', '>=', '2025-08-01')->get();
+```
+
+## 2. Compare with Another Column
+
+If you want to compare with another column (e.g. `expired_at`):
+
+```php
+$posts = Post::whereRaw('DATE(published_at) = DATE(expired_at)')->get();
+```
+
+## 3. Using Query Builder
+
+```php
+use Illuminate\Support\Facades\DB;
+
+$posts = Post::where(DB::raw('DATE(published_at)'), '2025-08-25')->get();
+```
+
+> ⚡ For most common cases, just use `whereDate()` because it's a built-in Eloquent helper to compare the date part of a datetime column.
+
+## 4. Compare Full Datetime (Date + Time)
+
+If you want to compare the full datetime (date and hour/minute/second), don't use `whereDate()`, but use the datetime column directly.
+
+**Example:**
+
+```php
+// Exact match (date + time)
+$posts = Post::where('published_at', '2025-08-25 14:30:00')->get();
+
+// With operator
+$posts = Post::where('published_at', '>=', '2025-08-25 00:00:00')
+             ->where('published_at', '<=', '2025-08-25 23:59:59')
+             ->get();
+```
+
+## 5. Compare Time Only
+
+Use `whereTime()`:
+
+```php
+// Get all records with time greater than 14:00
+$posts = Post::whereTime('published_at', '>', '14:00:00')->get();
+```
+
+## 6. Combine Date & Time
+
+```php
+$posts = Post::whereDate('published_at', '2025-08-25')
+             ->whereTime('published_at', '>=', '08:00:00')
+             ->whereTime('published_at', '<=', '17:00:00')
+             ->get();
+```
+
+---
+
+## Summary
+
+- **whereDate()** → date only (ignore time).
+- **whereTime()** → time only (ignore date).
+- **Regular where()** → full datetime (date + time).
+
+---
+
+## 7. whereBetween & whereIn for Date Only
+
+By default, `whereBetween` and `whereIn` work directly on the datetime value (including time). If you want date only, wrap the datetime column with `DATE()`.
+
+**whereBetween for date only:**
+
+```php
+use Illuminate\Support\Facades\DB;
+
+$posts = Post::whereBetween(
+    DB::raw('DATE(published_at)'),
+    ['2025-08-01', '2025-08-25']
+)->get();
+```
+
+**whereIn for date only:**
+
+```php
+$dates = ['2025-08-01', '2025-08-05', '2025-08-10'];
+
+$posts = Post::whereIn(DB::raw('DATE(published_at)'), $dates)->get();
+```
+
+**Alternative (more “eloquent way”):**
+
+Usually for time ranges, use `whereBetween` directly on the datetime column but set the time boundaries manually:
+
+```php
+$posts = Post::whereBetween('published_at', [
+    '2025-08-01 00:00:00',
+    '2025-08-25 23:59:59',
+])->get();
+```
+
+---
+
+### Difference
+
+- `DB::raw('DATE(...)')` → truly ignores the time, so all `2025-08-01 xx:yy:zz` are considered the same.
+- `whereBetween('published_at', [...])` → still includes the time, but you can set the time `00:00:00 – 23:59:59` to cover the full day.

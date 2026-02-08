@@ -1,0 +1,17 @@
+---
+title: 'Proxmox cheatsheet'
+description: 'Beberapa command yang berguna ketika menggunakan proxmox server.'
+date: '08-15-2023 01:01:00'
+tags: ["proxmox", "cheatsheet"]
+draft: false
+---
+
+Beberapa command yang berguna ketika menggunakan proxmox server.
+
+import cloud image ke disk, contoh:
+
+`qm disk import 101 /var/lib/vz/template/iso/ubuntu-22.04-server-cloudimg-amd64.img local-lvm`
+
+resize disk, contoh:
+
+`qm disk resize 101 scsi0 +15G`

@@ -1,0 +1,63 @@
+---
+title: 'Konfigurasi Bitbucket CI/CD untuk Laravel'
+description: 'Kali ini kita akan membuat konfigurasi ci/cd pada bitbucket.com untuk aplikasi laravel'
+date: '08-05-2023 18:10:00'
+tags: ["bitbucket", "ci/cd", "laravel"]
+draft: false
+---
+
+Kali ini kita akan membuat konfigurasi ci/cd pada bitbucket.com untuk aplikasi laravel
+
+## Petunjuk jika menggunakan tools laravel envoy
+* sudah melakukan setup server seperti yg dijelaskan article ini
+* sudah melakukan konfigurasi laravel envoy seperti yg dijelaskan article ini
+* buka menu repository setting -> pipelines -> ssh keys
+* masukan private key, dilocal bisa lihat file ini cat ~/.ssh/id_rsa
+* masukan public key, dilocal bisa lihat file ini cat ~/.ssh/id_rsa.pub
+* jika kedua file diatas belum ada bisa generate secara manual dengan perintah `ssh-keygen` lalu enter sampai selesai
+* fetch known host sampai berhasil
+
+buat file `bitbucket-pipelines.yml` di root app directory laravel dengan konfigurasi ini:
+
+```yaml
+image: composer:2.0
+
+pipelines:
+  default:
+    - parallel:
+        - step:
+            name: Deploy
+            deployment: production
+            script:
+              - composer update
+              - ./vendor/bin/envoy run deploy
+```
+
+Setiap kali ada push code push ke branch master maka proses ci/cd akan berjalan
+
+## Petunjuk jika menggunakan tools Deployer
+
+* sudah melakukan setup server seperti yg dijelaskan article ini
+* sudah melakukan konfigurasi laravel menggunakan deployer seperti yg dijelaskan article ini
+* buka menu repository setting -> pipelines -> ssh keys
+* masukan private key, dilocal bisa lihat file ini cat ~/.ssh/id_rsa
+* masukan public key, dilocal bisa lihat file ini cat ~/.ssh/id_rsa.pub
+* jika kedua file diatas belum ada bisa generate secara manual dengan perintah ssh-keygen lalu enter sampai selesai
+* fetch known host sampai berhasil
+
+buat file `bitbucket-pipelines.yml` di root app directory laravel dengan konfigurasi ini:
+
+```yaml
+image: composer:2.0
+
+pipelines:
+  default:
+    - parallel:
+        - step:
+            name: Deploy
+            deployment: production
+            script:
+              - composer update
+              - ./vendor/bin/dep deploy production -v
+```
+Setiap kali ada push code push ke branch master maka proses ci/cd akan berjalan

@@ -1,0 +1,171 @@
+---
+title: 'Sublime Text configuration for developing Laravel applications'
+description: 'The following is the configuration that I use when using the sublime text editor'
+date: '08-05-2023 19:00:00'
+tags: ["sublime text", "laravel"]
+draft: false
+---
+
+Below is the configuration I use when developing Laravel applications with Sublime Text editor.
+
+## PLUGINS
+
+* git
+* git blame
+* git gutter
+* sidebar menu advanced
+* syncedsidebar
+* lsp
+* lsp intelephense
+* lsp bash
+* lsp dockerfile
+* lsp eslint
+* lsp volar
+* vue syntax highlight
+* lsp svelte
+* lsp tailwindcss
+* terminus
+* fileicons
+* a file icon
+* codeium
+* shell exec
+
+To install plugins, open the Command Palette with `cmd + shift + p / alt + shift + p` and select "Install Plugin."
+
+## LSP
+
+The LSP plugins require Node.js, so the first step is to install Node.js.
+
+Installation guide: [https://github.com/nvm-sh/nvm#installing-and-updating](https://github.com/nvm-sh/nvm#installing-and-updating)  
+Usage guide: [https://github.com/nvm-sh/nvm#usage](https://github.com/nvm-sh/nvm#usage)
+
+### Intelephense
+
+After installation, run the following command:
+
+```bash
+npm -g i intelephense
+```
+
+Open the menu LSP > Servers > LSP-intelephense under "Package Settings" and configure as follows:
+
+```json
+{
+    "enabled": true,
+    "command": [
+        "intelephense",
+        "--stdio",
+    ],
+    "scopes": ["source.php", "embedding.php"],
+    "syntaxes": ["Packages/PHP/PHP.sublime-syntax"],
+    "languageId": "php",
+    "initializationOptions": {
+        "clearCache": false,
+        "licenceKey": "",
+    },
+}
+```
+
+Open the Command Palette and select Enable LSP: Enable Language Server.
+
+### Preferences Settings
+
+Open with cmd + , / alt + ,:
+
+```json
+{
+	"ignored_packages":
+	[
+		"Git",
+		"Git blame",
+		"GitGutter",
+		"Vintage",
+	],
+	"save_on_focus_lost": true,
+    "shell_exec_executable": "/bin/zsh",
+	"shell_exec_output": "panel",
+	"shell_exec_output_word_wrap": false
+}
+```
+
+### Key Bindings
+
+```json
+[
+    {
+        "command": "lsp_symbol_definition",
+        "args": {
+            "side_by_side": false
+        },
+        "keys": [
+            "super+enter"
+        ],
+        "context": [
+            {
+                "key": "lsp.session_with_capability",
+                "operator": "equal",
+                "operand": "definitionProvider"
+            },
+            {
+                "key": "auto_complete_visible",
+                "operator": "equal",
+                "operand": false
+            }
+        ]
+    },
+
+    {
+        "command": "lsp_format_document",
+        "keys": [
+            "super+shift+'"
+        ],
+        "context": [
+            {
+                "key": "lsp.session_with_capability",
+                "operator": "equal",
+                "operand": "documentFormattingProvider | documentRangeFormattingProvider"
+            }
+        ]
+    },
+    { "keys": ["super+b"], "command": "toggle_side_bar" },
+    { "keys": ["super+t"], "command": "toggle_terminus_panel" },
+    { "keys": ["super+shift+o"], "command": "close_all" },
+    {
+        "keys": ["super+shift+t"],
+        "caption": "Terminus: Open Default Shell in Split Tab",
+        "command": "terminus_open",
+        "args": {
+            "post_window_hooks": [
+                ["carry_file_to_pane", {"direction": "down"}]
+            ]
+        }
+    },
+    {
+      "keys": ["super+shift+;"],
+      "command": "shell_exec_run",
+      "args": {
+        "format": "./vendor/bin/pint"
+      }
+    }
+]
+```
+
+### Mouse Bindings
+
+```json
+[
+    {
+        "button": "button1", 
+        "count": 1, 
+        "modifiers": ["super"],
+        "press_command": "drag_select",
+        "command": "lsp_symbol_definition"
+    },
+	{
+		"button": "button1", "count": 1, "modifiers": ["ctrl"],
+		"press_command": "drag_select",
+		"press_args": {"additive": true}
+	}
+]
+
+```

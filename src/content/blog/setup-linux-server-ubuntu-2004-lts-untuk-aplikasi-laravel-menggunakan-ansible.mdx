@@ -1,0 +1,62 @@
+---
+title: 'Setup Linux Server Ubuntu 20.04 LTS untuk aplikasi Laravel menggunakan Ansible'
+description: 'Kali ini kita akan menjelaskan bagaimana cara setup ubuntu server 20.04 secara automatis menggunakan Ansible agar dapat menjalankan aplikasi laravel'
+date: '08-05-2023 17:10:00'
+tags: ["linux", "server", "ubuntu", "20.04", "laravel", "ansible"]
+draft: false
+---
+
+Kali ini kita akan menjelaskan bagaimana cara setup ubuntu server 20.04 secara automatis menggunakan Ansible agar dapat menjalankan aplikasi laravel
+
+## Ansible Ubuntu Focal Fossa (20.04) LTS
+
+### Syarat
+Install ansible di local pc. cara install.
+
+clone repository ini
+```shell
+    git clone git@github.com:jhonoryza/ansible-ubuntu-focal.git
+```
+
+`cd ansible-ubuntu-focal`
+
+Update host file, dimana variable hosts ini untuk konfigurasi ip address server yang akan digunakan dan user yg digunakan
+
+Tambahkan local's public key ~/.ssh/id_rsa.pub ke dalam remote server's di folder: ~/.ssh/authorized_keys
+
+Update variable yang terdapat di folder vars jika diperlukan.
+
+Cara Pakai
+
+run command di local: `ansible-playbook -i hosts <role>.yml`
+
+Kumpulan list role yang bisa digunakan :
+
+* common
+* nginx
+* php
+* mysql
+* redis
+
+contoh:
+
+`ansible-playbook -i hosts nginx.yml` untuk install nginx
+`ansible-playbook -i hosts lemp.yml` untuk install semuanya.
+
+Versi yang Terinstall
+
+Software Version
+| nginx  | 1.17.10
+| MySQL  | 8.0
+| PHP  | 8.0
+| redis  | latest
+| phpmyadmin  | 5.2.0
+| phpmyadmin  | latest
+
+akses phpmyadmin
+
+buka browser http://ip-address/phpmyadmin
+
+akses adminer
+
+buka browser http://ip-address/adminer

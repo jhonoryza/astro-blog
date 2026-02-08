@@ -1,0 +1,736 @@
+---
+title: 'Belajar Kubernetes untuk Laravel Developer'
+description: 'basic kubernetes untuk laravel developer yang sudah punya basic docker'
+date: '09-13-2025 19:35:00'
+tags: ["kubernetes", "laravel", "docker"]
+draft: false
+---
+
+- Bab 1-4 → dasar Kubernetes, cluster setup, dashboard
+- Bab 5-10 → implementasi Laravel (app, queue, scheduler, DB, Redis, storage,
+  scaling)
+- Bab 11-12 → backup, migrasi dari Docker Compose, best practices
+
+## 🏁 Bab 1 - Kenapa Laravel Perlu Kubernetes?
+
+### 1.1. Masalah yang Sering Muncul di Laravel Production
+
+Banyak Laravel project awalnya cukup dengan 1 VPS:
+
+Stack klasik:
+
+- Nginx + PHP-FPM
+- MySQL/PostgreSQL
+- Redis
+- Supervisor/systemd untuk worker queue
+- Backup manual
+- Update manual (SSH, git pull, composer install, php artisan migrate)
+
+Masalah mulai muncul ketika:
+
+- Aplikasi semakin banyak user → satu server mulai kepayahan
+- Aplikasi punya lebih dari 1 service (API, Horizon, Scheduler, Worker)
+- Butuh scaling otomatis karena traffic tidak stabil
+- Deployment manual sering bikin downtime
+- Recovery sulit kalau server mati
+
+### 1.2. Docker Compose: Solusi Setengah Jalan
+
+Docker Compose mempermudah:
+
+- Definisi service dalam docker-compose.yml
+- Jalankan semua dengan docker-compose up -d
+- Bisa scale worker manual: docker-compose up --scale queue=5
+
+Tapi Compose terbatas:
+
+- Tidak ada autoscaling
+- Tidak bisa multi-server
+- Load balancing harus manual
+- Tidak ada sistem native untuk secret/config
+- Monitoring dan logging sulit
+
+### 1.3. Kubernetes sebagai Solusi
+
+Kubernetes menjawab kekurangan itu:
+
+- Autoscaling → Horizontal Pod Autoscaler (HPA)
+- High Availability → multi-node cluster
+- Load balancing built-in → Service & Ingress
+- Zero-downtime deployment → rolling update
+- Manajemen secret/config rapi → ConfigMap & Secret
+- Monitoring lengkap → Prometheus, Grafana, dsb.
+
+⚖️ Singkatnya: Kalau aplikasi Laravel kamu mulai kompleks dan butuh scaling +
+HA, Kubernetes adalah jawaban.
+
+## ⚙️ Bab 2 - Dasar Kubernetes untuk yang Sudah Paham Docker
+
+### 2.1. Mindset Shift: Dari Container ke Cluster
+
+Kalau di Docker Compose:
+
+- Satu file .yml → jalankan semua container di satu server
+- Port binding: nginx:80 → host:8080
+
+Kalau di Kubernetes:
+
+- Kita bicara cluster (1 atau lebih node)
+- Resource didefinisikan pakai YAML (Deployment, Service, Ingress)
+- Setiap Pod punya IP sendiri, Service jadi jembatan
+
+### 2.2. Istilah Penting Kubernetes
+
+| Istilah      | Analogi Laravel    | Penjelasan                             |
+| ------------ | ------------------ | -------------------------------------- |
+| Pod          | 1 instance PHP-FPM | Unit terkecil berisi container         |
+| Deployment   | Supervisor queue   | Mengatur jumlah Pod, rolling update    |
+| Service      | Route + LB         | Akses Pod dengan IP stabil             |
+| Ingress      | Nginx routes       | Akses domain → Service                 |
+| Namespace    | Folder project     | Pisahkan resource (dev, staging, prod) |
+| ConfigMap    | config/\*.php      | Config non-sensitif                    |
+| Secret       | .env               | Data sensitif                          |
+| PVC (Volume) | Storage Laravel    | Disk yang tetap meski Pod mati         |
+
+### 2.3. Contoh Manifest YAML
+
+#### Deployment Laravel App
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: laravel-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: laravel
+  template:
+    metadata:
+      labels:
+        app: laravel
+    spec:
+      containers:
+        - name: php
+          image: myrepo/laravel-php:latest
+          ports:
+            - containerPort: 9000
+```
+
+#### Service untuk Laravel App
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: laravel-service
+spec:
+  selector:
+    app: laravel
+  ports:
+    - protocol: TCP
+      port: 9000
+      targetPort: 9000
+```
+
+#### Ingress Rule
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: laravel-ingress
+spec:
+  rules:
+    - host: laravel.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: laravel-service
+                port:
+                  number: 9000
+```
+
+## ⚙️ Bab 3 - Setup Cluster Kubernetes di VPS
+
+### 3.1. Pilihan Instalasi
+
+- Minikube → latihan di laptop
+- k3s → distribusi ringan, cocok untuk 1-3 VPS
+- kubeadm → instalasi manual (lebih ribet)
+- Cloud Managed (GKE/EKS/AKS) → produksi skala besar
+
+👉 Untuk Laravel + VPS kecil → k3s lebih pas.
+
+### 3.2. Install k3s di VPS
+
+```bash
+curl -sfL https://get.k3s.io | sh -
+```
+
+Cek node:
+
+```bash
+kubectl get nodes
+
+NAME    STATUS   ROLES                  AGE   VERSION
+vps-1   Ready    control-plane,master   5m    v1.27.4+k3s1
+```
+
+### 3.3. Remote Cluster dari Laptop
+
+Install kubectl:
+
+```bash
+curl -LO "https://dl.k8s.io/release/$(curl -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+chmod +x kubectl
+sudo mv kubectl /usr/local/bin/
+```
+
+Ambil config dari server:
+
+```bash
+scp root@vps:/etc/rancher/k3s/k3s.yaml ~/.kube/config
+```
+
+Tes koneksi:
+
+```bash
+kubectl get pods -A
+```
+
+## 📊 Bab 4 - Dashboard & Monitoring
+
+### 4.1. Pilihan Monitoring
+
+- Kubernetes Dashboard → UI resmi
+- Lens → aplikasi desktop (favorit banyak devops)
+- k9s → CLI interaktif
+- Prometheus + Grafana → monitoring metrics
+
+### 4.2. Install Kubernetes Dashboard
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml
+```
+
+Buat user admin:
+
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: admin-user
+  namespace: kubernetes-dashboard
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: admin-user
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: admin-user
+    namespace: kubernetes-dashboard
+```
+
+Dapatkan token login:
+
+```bash
+kubectl -n kubernetes-dashboard create token admin-user
+```
+
+Akses dashboard:
+
+```bash
+kubectl proxy
+```
+
+Lalu buka:
+http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
+
+## 🖥️ Bab 5 - Deploy Laravel di Kubernetes
+
+### 5.1. Siapkan Docker Image Laravel
+
+Sebelum deploy, Laravel harus di-containerize. Contoh Dockerfile sederhana
+(pakai PHP-FPM + Composer):
+
+```dockerfile
+FROM php:8.2-fpm
+
+# Install extension
+RUN apt-get update && apt-get install -y \
+    git \
+    unzip \
+    libpq-dev \
+    libzip-dev \
+    && docker-php-ext-install pdo pdo_mysql pdo_pgsql zip bcmath
+
+# Install Composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www/html
+
+COPY . .
+
+RUN composer install --no-dev --optimize-autoloader
+
+CMD ["php-fpm"]
+```
+
+Build dan push image:
+
+```bash
+docker build -t myrepo/laravel-app:latest .
+docker push myrepo/laravel-app:latest
+```
+
+### 5.2. Deployment Laravel
+
+laravel-deployment.yaml:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: laravel-app
+  namespace: dev
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: laravel
+  template:
+    metadata:
+      labels:
+        app: laravel
+    spec:
+      containers:
+        - name: laravel
+          image: myrepo/laravel-app:latest
+          ports:
+            - containerPort: 9000
+          envFrom:
+            - secretRef:
+                name: laravel-env
+          volumeMounts:
+            - name: storage
+              mountPath: /var/www/html/storage
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: laravel-storage-pvc
+```
+
+## 🏗️ Bab 6 - Queue, Scheduler, dan Worker
+
+### 6.1. Queue Worker
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: laravel-queue
+  namespace: dev
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: laravel-queue
+  template:
+    metadata:
+      labels:
+        app: laravel-queue
+    spec:
+      containers:
+        - name: worker
+          image: myrepo/laravel-app:latest
+          command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3"]
+          envFrom:
+            - secretRef:
+                name: laravel-env
+          volumeMounts:
+            - name: storage
+              mountPath: /var/www/html/storage
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: laravel-storage-pvc
+```
+
+### 6.2. Scheduler
+
+Gunakan CronJob untuk php artisan schedule:run:
+
+```yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: laravel-scheduler
+  namespace: dev
+spec:
+  schedule: "* * * * *" # setiap menit
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: scheduler
+              image: myrepo/laravel-app:latest
+              command: ["php", "artisan", "schedule:run"]
+              envFrom:
+                - secretRef:
+                    name: laravel-env
+          restartPolicy: OnFailure
+```
+
+## 🗄️ Bab 7 - Database & Redis
+
+### 7.1. PostgreSQL via StatefulSet
+
+```yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: dev
+spec:
+  serviceName: "postgres"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15
+          env:
+            - name: POSTGRES_DB
+              value: laravel
+            - name: POSTGRES_USER
+              value: laravel
+            - name: POSTGRES_PASSWORD
+              value: secret
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: pgdata
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: pgdata
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi
+```
+
+### 7.2. Redis Deployment
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7
+          ports:
+            - containerPort: 6379
+```
+
+## 🔑 Bab 8 - Config, Secret, dan .env
+
+### 8.1. ConfigMap (untuk non-sensitif)
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: laravel-config
+  namespace: dev
+data:
+  APP_ENV: production
+  APP_DEBUG: "false"
+```
+
+### 8.2. Secret dari File .env
+
+```bash
+kubectl create secret generic laravel-env \
+  --from-env-file=.env \
+  -n dev
+```
+
+### 8.3. SealedSecrets (aman dipush ke GitHub)
+
+```bash
+kubectl create secret generic laravel-env \
+  --from-env-file=.env \
+  --dry-run=client -o yaml | \
+  kubeseal -o yaml > laravel-env-sealed.yaml
+```
+
+## 📦 Bab 9 - Storage & PVC
+
+### 9.1. PersistentVolumeClaim untuk Laravel
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: laravel-storage-pvc
+  namespace: dev
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+```
+
+### 9.2. Volume Bersama untuk PHP-FPM, Queue, dan Scheduler
+
+Semua container mounting:
+
+```yaml
+volumeMounts:
+  - name: storage
+    mountPath: /var/www/html/storage
+```
+
+👉 Dengan ReadWriteMany (misalnya NFS/Longhorn), worker, scheduler, dan app bisa
+baca/tulis bareng.
+
+## 🔄 Bab 10 - Deployment Strategy & Scaling
+
+### 10.1. Rolling Update
+
+Di Deployment:
+
+```yaml
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 0
+    maxSurge: 1
+```
+
+Artinya:
+
+- Pod lama tidak langsung dimatikan
+- Pod baru dibuat dulu → test → lalu gantian hapus pod lama
+
+### 10.2. Horizontal Pod Autoscaler
+
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: laravel-hpa
+  namespace: dev
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: laravel-app
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+```
+
+👉 Jika CPU > 70%, Pod Laravel otomatis ditambah.
+
+✅ Dengan Bab 5-10, kita sudah punya Laravel Production Stack di Kubernetes:
+
+- Laravel App + Queue + Scheduler
+- PostgreSQL + Redis
+- Secret & Config
+- PVC storage
+- Rolling update & autoscaling
+
+## 💾 Bab 11 - Backup, Restore & Migrasi
+
+### 11.1. Backup & Restore Database
+
+Untuk database (PostgreSQL/MySQL), strategi yang umum:
+
+- Dump database ke file (pakai pg_dump atau mysqldump)
+- Simpan di PersistentVolume atau S3
+- Restore pakai kubectl exec
+
+Contoh backup PostgreSQL:
+
+```bash
+kubectl exec -it postgres-0 -n dev -- \
+  pg_dump -U laravel laravel > laravel_backup.sql
+```
+
+Restore:
+
+```bash
+kubectl exec -i postgres-0 -n dev -- \
+  psql -U laravel laravel < laravel_backup.sql
+```
+
+👉 Alternatif: pakai operator seperti CrunchyData PostgreSQL Operator atau
+Bitnami Helm Chart yang sudah ada job backup otomatis ke S3.
+
+### 11.2. Backup & Restore PVC
+
+PVC (volume untuk storage/, uploads, dll) biasanya isinya file. Cara backup:
+
+rsync pakai pod helper:
+
+```bash
+kubectl exec -it laravel-app-xxxx -n dev -- \
+  tar czf - /var/www/html/storage > storage-backup.tar.gz
+```
+
+Velero → tool populer untuk backup seluruh namespace (PVC, Secret, ConfigMap,
+Deployment) ke S3/MinIO:
+
+```bash
+velero install \
+  --provider aws \
+  --plugins velero/velero-plugin-for-aws:v1.6.0 \
+  --bucket laravel-backup \
+  --secret-file ./credentials-velero \
+  --use-restic
+```
+
+Restore namespace dengan Velero:
+
+```bash
+velero restore create --from-backup laravel-dev-20250912
+```
+
+### 11.3. Migrasi Perlahan dari Docker Compose
+
+Kalau sekarang masih ada container jalan pakai Docker Compose di VPS, migrasi ke
+Kubernetes bisa bertahap:
+
+1. Install k3s/kubeadm di VPS → bisa jalan bareng dengan Docker Compose
+2. Kubernetes pakai containerd by default, jadi tidak bentrok dengan Docker
+3. Kamu masih bisa docker ps untuk lihat container Compose
+4. Pindahkan service satu per satu:
+   - Mulai dari Redis (paling aman dipindah duluan)
+   - Lalu queue worker → bisa diuji tanpa ganggu app
+   - Terakhir app utama + database
+5. Gunakan namespace dev dulu untuk testing sebelum pindah ke prod
+
+## 🚀 Bab 12 - Best Practices Laravel di Kubernetes
+
+### 12.1. Struktur Namespace
+
+Pisahkan environment:
+
+```bash
+kubectl create namespace dev   # testing
+kubectl create namespace prod  # live app
+```
+
+### 12.2. Gunakan SealedSecrets
+
+Jangan commit .env biasa ke GitHub. Gunakan SealedSecrets:
+
+- Developer cukup pegang public key → bisa bikin SealedSecret
+- Cluster saja yang bisa decrypt
+
+Workflow:
+
+```bash
+kubectl create secret generic laravel-env \
+  --from-env-file=.env.prod --dry-run=client -o yaml | \
+  kubeseal -o yaml > laravel-sealedsecret.yaml
+```
+
+File laravel-sealedsecret.yaml aman dipush ke GitHub.
+
+### 12.3. Gunakan ConfigMap untuk Non-Sensitif
+
+Hal-hal seperti:
+
+- APP_ENV
+- CACHE_DRIVER
+- QUEUE_CONNECTION
+
+Simpan di ConfigMap, bukan di Secret.
+
+### 12.4. Strategi Deployment
+
+- Gunakan RollingUpdate → zero downtime saat push image baru
+- Hindari pakai :latest → lebih baik pakai tag versi (v1.0.3)
+- Bisa pakai tool Keel atau ArgoCD untuk auto-deploy kalau ada tag baru
+
+### 12.5. Logging & Monitoring
+
+- Gunakan kubectl logs -f deployment/laravel-app -n prod untuk debug cepat
+- Untuk production: pakai ELK stack (Elasticsearch, Logstash, Kibana) atau
+  Loki + Grafana
+
+### 12.6. Scaling
+
+Untuk queue worker, scaling bisa:
+
+```bash
+kubectl scale deployment laravel-queue -n prod --replicas=10
+```
+
+Atau otomatis dengan HPA berbasis CPU/memory/queue length.
+
+### 12.7. Ingress Controller
+
+Gunakan Ingress Controller (Nginx atau Traefik) untuk routing domain:
+
+- api.prod.com → Laravel service
+- redis.prod.com → Redis (opsional, biasanya internal)
+- pgadmin.prod.com → PgAdmin (UI database)
+
+### 12.8. Backup Rutin
+
+- Database → pakai CronJob (pg_dump → upload ke S3)
+- Storage PVC → pakai Velero/restic
+
+### 12.9. CI/CD Workflow Ideal
+
+1. Push code ke GitHub
+2. GitHub Actions:
+   - Build Docker image → push ke registry
+   - Apply YAML manifest ke cluster (kubectl atau ArgoCD)
+3. Kubernetes → rolling update otomatis
+
+## 📖 Penutup
+
+Dengan ini, kamu bisa mulai dari 1 VPS dengan k3s → lalu bertahap scale ke
+multi-node cluster → lalu otomatisasi dengan CI/CD + backup + monitoring.
